@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -7,6 +7,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from datetime import datetime, time
 import io
+import os
 
 app = FastAPI(title="Sistema de Control Logístico de Transportes")
 
@@ -71,7 +72,6 @@ def clasificar_turno_por_hora(hora_val):
         return "SALIDA SEGUNDO TURNO"
 
 def limpiar_valor(val):
-    """Limpia los flotantes innecesarios como 53.0 a 53."""
     if pd.isna(val):
         return ""
     if isinstance(val, float):
@@ -82,18 +82,32 @@ def limpiar_valor(val):
 
 @app.post("/procesar-reporte/")
 async def procesar_reporte(file: UploadFile = File(...)):
+    if not file.filename.endswith('.xlsx'):
+        raise HTTPException(status_code=400, detail="El archivo enviado no tiene la extensión .xlsx requerida.")
+
     contents = await file.read()
-    df = pd.read_excel(io.BytesIO(contents))
-    
-    # Preservar las columnas originales
+    try:
+        df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="No se pudo leer el archivo Excel. Asegúrate de que no esté corrupto.")
+
+    if df.empty:
+        raise HTTPException(status_code=400, detail="El archivo subido está completamente vacío.")
+
     original_columns = list(df.columns)
 
-    # Identificar columnas de forma inteligente
-    col_fecha = next((c for c in df.columns if 'fecha' in str(c).lower()), df.columns[0])
-    col_hora = next((c for c in df.columns if 'hora' in str(c).lower()), df.columns[1])
-    col_camion = next((c for c in df.columns if 'camion' in str(c).lower()), df.columns[2])
-    
-    # Priorizar la columna con el nombre textual de la línea (excluyendo 'clave' o 'id')
+    # Identificación inteligente de columnas
+    col_fecha = next((c for c in df.columns if 'fecha' in str(c).lower()), None)
+    col_hora = next((c for c in df.columns if 'hora' in str(c).lower()), None)
+    col_camion = next((c for c in df.columns if 'camion' in str(c).lower() or 'unidad' in str(c).lower()), None)
+
+    # Validaciones sobre la validez del archivo
+    if not col_fecha or not col_hora or not col_camion:
+        raise HTTPException(
+            status_code=400, 
+            detail="Estructura de archivo no válida. Faltan columnas fundamentales (Fecha, Hora o Camión/Unidad). Verifique que no esté subiendo un archivo ya procesado o incompleto."
+        )
+
     col_linea = next((c for c in df.columns if 'linea' in str(c).lower() and 'clave' not in str(c).lower() and 'id' not in str(c).lower()), None)
     if not col_linea:
         col_linea = next((c for c in df.columns if 'linea' in str(c).lower()), None)
@@ -102,16 +116,20 @@ async def procesar_reporte(file: UploadFile = File(...)):
 
     # Procesar Fecha y Clasificación de Turnos
     df['Fecha_Parsed'] = pd.to_datetime(df[col_fecha], dayfirst=True, errors='coerce')
-    df['Turno_Clasificado'] = df[col_hora].apply(clasificar_turno_por_hora)
+    
+    if df['Fecha_Parsed'].dropna().empty:
+        raise HTTPException(status_code=400, detail="La columna de fechas no contiene valores con formato de fecha válidos.")
 
-    # Ordenar por Camión, Fecha y Hora
+    df['Turno_Clasificado'] = df[col_hora].apply(clasificar_turno_por_hora)
     df = df.sort_values(by=[col_camion, 'Fecha_Parsed', col_hora], ascending=[True, True, True])
 
     wb = Workbook()
     wb.remove(wb.active)
 
+    # Estilos
     header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
     summary_header_fill = PatternFill(start_color="2F5597", end_color="2F5597", fill_type="solid")
+    global_fill = PatternFill(start_color="1B365D", end_color="1B365D", fill_type="solid")
     total_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
     
     font_header = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -135,12 +153,74 @@ async def procesar_reporte(file: UploadFile = File(...)):
         "SALIDA SEGUNDO TURNO"
     ]
 
+    # --- 1. HOJA INICIAL DE RESUMEN GLOBAL ---
+    ws_global = wb.create_sheet(title="RESUMEN GLOBAL", index=0)
+    ws_global.views.sheetView[0].showGridLines = True
+
+    ws_global.merge_cells("A1:E1")
+    title_cell = ws_global["A1"]
+    title_cell.value = "CONSOLIDADO LOGÍSTICO DE REPORTES PROCESADOS"
+    title_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
+    title_cell.fill = global_fill
+    title_cell.alignment = align_center
+
+    global_headers = ["CAMIÓN / UNIDAD", "TOTAL REGISTROS", "LÍNEA PREDOMINANTE", "POBLACIÓN", "DÍAS OPERATIVOS"]
+    ws_global.append([])
+    ws_global.append(global_headers)
+
+    for col_idx in range(1, 6):
+        c = ws_global.cell(row=3, column=col_idx)
+        c.fill = summary_header_fill
+        c.font = font_header
+        c.alignment = align_center
+
+    g_row = 4
+    total_general_registros = 0
+
+    for camion_val, df_camion in df.groupby(col_camion, sort=True):
+        camion_str = limpiar_valor(camion_val)
+        cnt_total = len(df_camion)
+        total_general_registros += cnt_total
+
+        linea_str = ""
+        if col_linea and not df_camion[col_linea].dropna().empty:
+            linea_str = limpiar_valor(df_camion[col_linea].mode()[0])
+
+        poblacion_str = ""
+        if col_poblacion and not df_camion[col_poblacion].dropna().empty:
+            poblacion_str = limpiar_valor(df_camion[col_poblacion].mode()[0])
+
+        dias_ops = df_camion['Fecha_Parsed'].dropna().dt.date.nunique()
+
+        ws_global.cell(row=g_row, column=1, value=camion_str).alignment = align_center
+        ws_global.cell(row=g_row, column=2, value=cnt_total).alignment = align_right
+        ws_global.cell(row=g_row, column=3, value=linea_str).alignment = align_left
+        ws_global.cell(row=g_row, column=4, value=poblacion_str).alignment = align_left
+        ws_global.cell(row=g_row, column=5, value=dias_ops).alignment = align_center
+
+        for c_i in range(1, 6):
+            cell = ws_global.cell(row=g_row, column=c_i)
+            cell.font = font_regular
+            cell.border = thin_border
+
+        g_row += 1
+
+    # Fila de Total Global
+    ws_global.cell(row=g_row, column=1, value="TOTAL GENERAL").alignment = align_center
+    ws_global.cell(row=g_row, column=2, value=total_general_registros).alignment = align_right
+    
+    for c_i in range(1, 6):
+        cell = ws_global.cell(row=g_row, column=c_i)
+        cell.fill = total_fill
+        cell.font = font_bold
+        cell.border = thin_border
+
+    # --- 2. GENERACIÓN DE HOJAS POR CAMIÓN ---
     for camion_val, df_camion in df.groupby(col_camion, sort=True):
         camion_str = limpiar_valor(camion_val)
         ws = wb.create_sheet(title=f"CAMION {camion_str}")
         ws.views.sheetView[0].showGridLines = True
         
-        # Escribir encabezado
         ws.append(original_columns)
         for col_num in range(1, len(original_columns) + 1):
             cell = ws.cell(row=1, column=col_num)
@@ -162,7 +242,6 @@ async def procesar_reporte(file: UploadFile = File(...)):
             for _, row in df_fecha.iterrows():
                 for col_idx, col_name in enumerate(original_columns, 1):
                     val = row[col_name]
-                    
                     if col_name == col_fecha and pd.notna(val):
                         val_str = fecha_actual.strftime('%Y-%m-%d')
                     else:
@@ -175,7 +254,6 @@ async def procesar_reporte(file: UploadFile = File(...)):
                 
                 current_left_row += 1
 
-            # Extraer Nombre de Línea y Población
             linea_nombre = ""
             if col_linea and not df_fecha[col_linea].dropna().empty:
                 linea_nombre = limpiar_valor(df_fecha[col_linea].dropna().iloc[0])
@@ -186,7 +264,6 @@ async def procesar_reporte(file: UploadFile = File(...)):
 
             conteo_turnos = df_fecha['Turno_Clasificado'].value_counts()
 
-            # Encabezados de la tabla de resumen
             c_hdr = ws.cell(row=start_block_row, column=summary_col_start, value="CONCEPTO / TURNO")
             v_hdr = ws.cell(row=start_block_row, column=summary_col_start + 1, value="VALOR / CONTEO")
             
@@ -234,7 +311,6 @@ async def procesar_reporte(file: UploadFile = File(...)):
             max_rows = max(len(df_fecha), len(summary_items) + 1)
             row_pointer = start_block_row + max_rows + 3
 
-        # Autoajuste de columnas
         for col in ws.columns:
             max_len = 0
             col_letter = get_column_letter(col[0].column)
@@ -243,6 +319,15 @@ async def procesar_reporte(file: UploadFile = File(...)):
                     max_len = max(max_len, len(str(cell.value)))
             ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
+    # Ajuste de columnas de la hoja global
+    for col in ws_global.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            if cell.value:
+                max_len = max(max_len, len(str(cell.value)))
+        ws_global.column_dimensions[col_letter].width = max(max_len + 4, 15)
+
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
@@ -250,9 +335,8 @@ async def procesar_reporte(file: UploadFile = File(...)):
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=Reporte_Procesado.xlsx"}
+        headers={"Content-Disposition": f"attachment; filename=Reporte_Procesado_{datetime.now().strftime('%Y%m%d')}.xlsx"}
     )
-import os
 
 if __name__ == "__main__":
     import uvicorn
