@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Control Logístico de Transportes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- Header / Navbar -->
+    <header class="bg-slate-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-truck-ramp-box text-2xl text-blue-400"></i>
+                <h1 class="text-xl font-bold tracking-wide">Sistema de Control Logístico de Transportes</h1>
+            </div>
+            <span class="text-xs bg-slate-800 text-blue-300 font-semibold px-3 py-1 rounded-full border border-slate-700">v1.0.0 | Producción</span>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto my-10 px-6 w-full flex-grow">
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+            
+            <!-- Card Header -->
+            <div class="border-b border-slate-200 bg-slate-50 p-6">
+                <h2 class="text-lg font-semibold text-slate-900">Procesamiento e Integración de Reportes</h2>
+                <p class="text-sm text-slate-500 mt-1">Carga el archivo diario en formato Excel (.xlsx) para estructurar y agrupar automáticamente las salidas y entradas de turnos por camión.</p>
+            </div>
+
+            <!-- Upload Area -->
+            <div class="p-8">
+                <form id="uploadForm" class="space-y-6">
+                    <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-10 text-center bg-slate-50 transition duration-200 cursor-pointer flex flex-col items-center justify-center">
+                        <i class="fa-solid fa-file-excel text-5xl text-emerald-600 mb-3"></i>
+                        <p class="text-sm font-medium text-slate-700">Arrastra tu archivo <span class="font-bold">General.xlsx</span> aquí</p>
+                        <p class="text-xs text-slate-400 mt-1">o haz clic para examinar desde tu equipo</p>
+                        <input type="file" id="fileInput" accept=".xlsx, .xls" class="hidden">
+                    </div>
+
+                    <!-- Selected File Info -->
+                    <div id="fileInfo" class="hidden flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-file-circle-check text-blue-600 text-xl"></i>
+                            <div>
+                                <p id="fileName" class="text-sm font-semibold text-slate-800">nombre_archivo.xlsx</p>
+                                <p id="fileSize" class="text-xs text-slate-500">0 KB</p>
+                            </div>
+                        </div>
+                        <button type="button" id="removeFile" class="text-slate-400 hover:text-red-500 transition">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button type="submit" id="submitBtn" disabled class="w-full bg-slate-400 text-white py-3 rounded-lg font-semibold flex justify-center items-center space-x-2 transition cursor-not-allowed">
+                        <i class="fa-solid fa-gear"></i>
+                        <span>Procesar y Generar Reporte</span>
+                    </button>
+                </form>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden mt-6 text-center py-4">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent mb-2"></div>
+                    <p class="text-sm font-medium text-slate-600">Procesando registros y clasificando turnos...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4">
+        <div class="max-w-7xl mx-auto px-6 text-center text-xs text-slate-500">
+            <p>© 2026 Sistema de Logística y Transportes. Módulo de Automatización de Reportes.</p>
+        </div>
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFile = document.getElementById('removeFile');
+        const submitBtn = document.getElementById('submitBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const loadingState = document.getElementById('loadingState');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500', 'bg-blue-50');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                fileInput.files = files;
+                fileName.textContent = file.name;
+                fileSize.textContent = (file.size / 1024).toFixed(2) + ' KB';
+                fileInfo.classList.remove('hidden');
+                dropZone.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('bg-slate-400', 'cursor-not-allowed');
+                submitBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'cursor-pointer');
+            }
+        }
+
+        removeFile.addEventListener('click', () => {
+            fileInput.value = '';
+            fileInfo.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            submitBtn.disabled = true;
+            submitBtn.classList.add('bg-slate-400', 'cursor-not-allowed');
+            submitBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'cursor-pointer');
+        });
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!fileInput.files.length) return;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            submitBtn.disabled = true;
+            loadingState.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/procesar-reporte/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Error al procesar el archivo');
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = 'Reporte_Procesado.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+            } catch (err) {
+                alert('Ocurrió un error al procesar el reporte: ' + err.message);
+            } finally {
+                loadingState.classList.add('hidden');
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
