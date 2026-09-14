@@ -6,140 +6,230 @@
     <title>Sistema de Control Logístico de Transportes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .drag-active {
+            border-color: #2563eb !important;
+            background-color: #eff6ff !important;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .animate-pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
 </head>
-<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+<body class="bg-slate-50 min-h-screen text-slate-800 font-sans flex flex-col justify-between">
 
     <!-- Header / Navbar -->
-    <header class="bg-slate-900 text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <header class="bg-slate-900 text-white shadow-md py-4 px-6 mb-8 border-b border-slate-700">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-truck-ramp-box text-2xl text-blue-400"></i>
-                <h1 class="text-xl font-bold tracking-wide">Sistema de Control Logístico de Transportes</h1>
+                <i class="fa-solid fa-bus text-blue-400 text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-wide">Control Logístico de Transportes</h1>
             </div>
-            <span class="text-xs bg-slate-800 text-blue-300 font-semibold px-3 py-1 rounded-full border border-slate-700">v1.0.0 | Producción</span>
+            <span class="text-xs bg-blue-600 text-white font-medium px-2.5 py-1 rounded-full">v2.0 Nube</span>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="max-w-4xl mx-auto my-10 px-6 w-full flex-grow">
-        <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-            
-            <!-- Card Header -->
-            <div class="border-b border-slate-200 bg-slate-50 p-6">
-                <h2 class="text-lg font-semibold text-slate-900">Procesamiento e Integración de Reportes</h2>
-                <p class="text-sm text-slate-500 mt-1">Carga el archivo diario en formato Excel (.xlsx) para estructurar y agrupar automáticamente las salidas y entradas de turnos por camión.</p>
+    <main class="max-w-3xl mx-auto px-4 w-full flex-grow">
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200/80 p-6 md:p-8">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-slate-900">Procesamiento Automático de Reportes</h2>
+                <p class="text-slate-500 text-sm mt-1">Sube el reporte operativo en formato Excel para generar la clasificación por camión, turnos y la hoja de resumen global.</p>
             </div>
 
-            <!-- Upload Area -->
-            <div class="p-8">
-                <form id="uploadForm" class="space-y-6">
-                    <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-10 text-center bg-slate-50 transition duration-200 cursor-pointer flex flex-col items-center justify-center">
-                        <i class="fa-solid fa-file-excel text-5xl text-emerald-600 mb-3"></i>
-                        <p class="text-sm font-medium text-slate-700">Arrastra tu archivo <span class="font-bold">General.xlsx</span> aquí</p>
-                        <p class="text-xs text-slate-400 mt-1">o haz clic para examinar desde tu equipo</p>
-                        <input type="file" id="fileInput" accept=".xlsx, .xls" class="hidden">
+            <!-- Drag & Drop Zone -->
+            <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 transition-all duration-200 bg-slate-50 relative group">
+                <input type="file" id="file-input" accept=".xlsx" class="hidden">
+                <div id="upload-content" class="flex flex-col items-center justify-center space-y-3">
+                    <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 text-2xl group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-file-excel"></i>
                     </div>
+                    <div>
+                        <p class="text-slate-700 font-semibold">Arrastra y suelta tu archivo Excel aquí</p>
+                        <p class="text-xs text-slate-400 mt-1">O haz clic para explorar en tu dispositivo (.xlsx)</p>
+                    </div>
+                </div>
 
-                    <!-- Selected File Info -->
-                    <div id="fileInfo" class="hidden flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <div class="flex items-center space-x-3">
-                            <i class="fa-solid fa-file-circle-check text-blue-600 text-xl"></i>
-                            <div>
-                                <p id="fileName" class="text-sm font-semibold text-slate-800">nombre_archivo.xlsx</p>
-                                <p id="fileSize" class="text-xs text-slate-500">0 KB</p>
-                            </div>
+                <!-- Selected File Display -->
+                <div id="file-info" class="hidden flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-file-circle-check text-blue-600 text-2xl"></i>
+                        <div>
+                            <p id="file-name" class="text-sm font-semibold text-slate-800 truncate max-w-xs md:max-w-md">nombre_archivo.xlsx</p>
+                            <p id="file-size" class="text-xs text-slate-500">0 KB</p>
                         </div>
-                        <button type="button" id="removeFile" class="text-slate-400 hover:text-red-500 transition">
-                            <i class="fa-solid fa-xmark text-lg"></i>
-                        </button>
                     </div>
-
-                    <!-- Action Button -->
-                    <button type="submit" id="submitBtn" disabled class="w-full bg-slate-400 text-white py-3 rounded-lg font-semibold flex justify-center items-center space-x-2 transition cursor-not-allowed">
-                        <i class="fa-solid fa-gear"></i>
-                        <span>Procesar y Generar Reporte</span>
+                    <button id="remove-file-btn" class="text-slate-400 hover:text-red-500 transition-colors p-1">
+                        <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
-                </form>
-
-                <!-- Loading State -->
-                <div id="loadingState" class="hidden mt-6 text-center py-4">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent mb-2"></div>
-                    <p class="text-sm font-medium text-slate-600">Procesando registros y clasificando turnos...</p>
                 </div>
             </div>
+
+            <!-- Alerts Container -->
+            <div id="alert-box" class="hidden mt-4 p-4 rounded-xl text-sm flex items-start space-x-3">
+                <i id="alert-icon" class="text-lg mt-0.5"></i>
+                <div id="alert-message" class="flex-1"></div>
+            </div>
+
+            <!-- Loading Progress Bar -->
+            <div id="progress-container" class="hidden mt-6 bg-slate-100 rounded-xl p-5 border border-slate-200">
+                <div class="flex justify-between items-center mb-2">
+                    <span id="progress-text" class="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-circle-notch animate-spin text-blue-600"></i>
+                        Procesando datos y estructurando turnos...
+                    </span>
+                    <span id="progress-percent" class="text-xs font-bold text-slate-600">0%</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                    <div id="progress-bar" class="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button id="process-btn" class="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-6 rounded-xl shadow-md transition-all duration-200 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-gear"></i>
+                <span>Procesar y Descargar Reporte</span>
+            </button>
         </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-4">
-        <div class="max-w-7xl mx-auto px-6 text-center text-xs text-slate-500">
-            <p>© 2026 Sistema de Logística y Transportes. Módulo de Automatización de Reportes.</p>
-        </div>
+    <footer class="text-center py-6 text-xs text-slate-400">
+        <p>Sistema de Control Logístico de Transportes &copy; 2026</p>
     </footer>
 
-    <!-- Logic Script -->
     <script>
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        const removeFile = document.getElementById('removeFile');
-        const submitBtn = document.getElementById('submitBtn');
-        const uploadForm = document.getElementById('uploadForm');
-        const loadingState = document.getElementById('loadingState');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadContent = document.getElementById('upload-content');
+        const fileInfo = document.getElementById('file-info');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+        const removeFileBtn = document.getElementById('remove-file-btn');
+        const processBtn = document.getElementById('process-btn');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercent = document.getElementById('progress-percent');
+        const progressText = document.getElementById('progress-text');
+        const alertBox = document.getElementById('alert-box');
+        const alertIcon = document.getElementById('alert-icon');
+        const alertMessage = document.getElementById('alert-message');
 
-        dropZone.addEventListener('click', () => fileInput.click());
+        let selectedFile = null;
 
-        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        dropZone.addEventListener('click', (e) => {
+            if (e.target.closest('#remove-file-btn')) return;
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
 
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            dropZone.classList.add('border-blue-500', 'bg-blue-50');
+            dropZone.classList.add('drag-active');
         });
 
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        ['dragleave', 'dragend'].forEach(type => {
+            dropZone.addEventListener(type, () => dropZone.classList.remove('drag-active'));
         });
 
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-            handleFiles(e.dataTransfer.files);
+            dropZone.classList.remove('drag-active');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
         });
 
-        function handleFiles(files) {
-            if (files.length > 0) {
-                const file = files[0];
-                fileInput.files = files;
-                fileName.textContent = file.name;
-                fileSize.textContent = (file.size / 1024).toFixed(2) + ' KB';
-                fileInfo.classList.remove('hidden');
-                dropZone.classList.add('hidden');
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('bg-slate-400', 'cursor-not-allowed');
-                submitBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'cursor-pointer');
+        function handleFileSelect(file) {
+            hideAlert();
+            
+            // Validar extensión estricta .xlsx
+            if (!file.name.toLowerCase().endsWith('.xlsx')) {
+                showAlert('El archivo seleccionado no es válido. Por favor, sube únicamente archivos con formato de Excel (.xlsx).', 'error');
+                resetFileInput();
+                return;
             }
+
+            // Validar si es un archivo que ya contiene patrones de reporte procesado
+            if (file.name.toLowerCase().includes('reporte_procesado') || file.name.toLowerCase().includes('procesado')) {
+                showAlert('Atención: El archivo parece ser un reporte ya procesado previamente. Asegúrate de subir el archivo con los datos operativos originales.', 'warning');
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
+            uploadContent.classList.add('hidden');
+            fileInfo.classList.remove('hidden');
         }
 
-        removeFile.addEventListener('click', () => {
-            fileInput.value = '';
-            fileInfo.classList.add('hidden');
-            dropZone.classList.remove('hidden');
-            submitBtn.disabled = true;
-            submitBtn.classList.add('bg-slate-400', 'cursor-not-allowed');
-            submitBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'cursor-pointer');
+        removeFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetFileInput();
+            hideAlert();
         });
 
-        uploadForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!fileInput.files.length) return;
+        function resetFileInput() {
+            selectedFile = null;
+            fileInput.value = '';
+            uploadContent.classList.remove('hidden');
+            fileInfo.classList.add('hidden');
+        }
+
+        function showAlert(message, type) {
+            alertBox.classList.remove('hidden', 'bg-red-50', 'text-red-800', 'border-red-200', 'bg-amber-50', 'text-amber-800', 'border-amber-200', 'bg-emerald-50', 'text-emerald-800', 'border-emerald-200');
+            alertBox.classList.add('border');
+
+            if (type === 'error') {
+                alertBox.classList.add('bg-red-50', 'text-red-800', 'border-red-200');
+                alertIcon.className = 'fa-solid fa-triangle-exclamation text-red-500 text-lg mt-0.5';
+            } else if (type === 'warning') {
+                alertBox.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-200');
+                alertIcon.className = 'fa-solid fa-circle-exclamation text-amber-500 text-lg mt-0.5';
+            } else {
+                alertBox.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-200');
+                alertIcon.className = 'fa-solid fa-circle-check text-emerald-500 text-lg mt-0.5';
+            }
+
+            alertMessage.innerHTML = message;
+        }
+
+        function hideAlert() {
+            alertBox.classList.add('hidden');
+        }
+
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                showAlert('Debes seleccionar o arrastrar un archivo Excel antes de procesar.', 'error');
+                return;
+            }
+
+            hideAlert();
+            processBtn.disabled = true;
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '10%';
+            progressPercent.textContent = '10%';
 
             const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+            formData.append('file', selectedFile);
 
-            submitBtn.disabled = true;
-            loadingState.classList.remove('hidden');
+            let progressVal = 10;
+            const interval = setInterval(() => {
+                if (progressVal < 90) {
+                    progressVal += 15;
+                    progressBar.style.width = progressVal + '%';
+                    progressPercent.textContent = progressVal + '%';
+                }
+            }, 300);
 
             try {
                 const response = await fetch('/procesar-reporte/', {
@@ -147,22 +237,38 @@
                     body: formData
                 });
 
-                if (!response.ok) throw new Error('Error al procesar el archivo');
+                clearInterval(interval);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: 'Ocurrió un error inesperado en el servidor.' }));
+                    throw new Error(errorData.detail || 'Error en el procesamiento del reporte.');
+                }
+
+                progressBar.style.width = '100%';
+                progressPercent.textContent = '100%';
+                progressText.innerHTML = '<i class="fa-solid fa-check text-emerald-600"></i> ¡Reporte procesado exitosamente!';
 
                 const blob = await response.blob();
                 const downloadUrl = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = downloadUrl;
-                a.download = 'Reporte_Procesado.xlsx';
+                a.download = `Reporte_Procesado_${new Date().toISOString().slice(0,10)}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
+                window.URL.revokeObjectURL(downloadUrl);
+
+                showAlert('¡El reporte se generó e incluyó la Hoja Inicial de Resumen Global correctamente!', 'success');
 
             } catch (err) {
-                alert('Ocurrió un error al procesar el reporte: ' + err.message);
+                clearInterval(interval);
+                showAlert(err.message, 'error');
             } finally {
-                loadingState.classList.add('hidden');
-                submitBtn.disabled = false;
+                setTimeout(() => {
+                    processBtn.disabled = false;
+                    progressContainer.classList.add('hidden');
+                    progressBar.style.width = '0%';
+                }, 2000);
             }
         });
     </script>
