@@ -51,7 +51,7 @@
                     </div>
                     <div>
                         <p class="text-slate-700 font-semibold">Arrastra y suelta tu archivo Excel aquí</p>
-                        <p class="text-xs text-slate-400 mt-1">O haz clic para explorar en tu dispositivo (.xlsx)</p>
+                        <p class="text-xs text-slate-400 mt-1">O haz clic para explorar en tu dispositivo (.xls/.xlsx)</p>
                     </div>
                 </div>
 
@@ -153,15 +153,17 @@
         function handleFileSelect(file) {
             hideAlert();
             
-            // Validar extensión estricta .xlsx
-            if (!file.name.toLowerCase().endsWith('.xlsx')) {
-                showAlert('El archivo seleccionado no es válido. Por favor, sube únicamente archivos con formato de Excel (.xlsx).', 'error');
+            const lowerName = file.name.toLowerCase();
+
+            // Validar extensiones de excel aceptadas (.xlsx o .xls)
+            if (!lowerName.endsWith('.xlsx') && !lowerName.endsWith('.xls')) {
+                showAlert('El archivo seleccionado no es válido. Por favor, sube únicamente archivos de reporte en formato Excel (.xls o .xlsx).', 'error');
                 resetFileInput();
                 return;
             }
 
             // Validar si es un archivo que ya contiene patrones de reporte procesado
-            if (file.name.toLowerCase().includes('reporte_procesado') || file.name.toLowerCase().includes('procesado')) {
+            if (lowerName.includes('reporte_procesado') || lowerName.includes('procesado')) {
                 showAlert('Atención: El archivo parece ser un reporte ya procesado previamente. Asegúrate de subir el archivo con los datos operativos originales.', 'warning');
             }
 
