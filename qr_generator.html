@@ -3,16 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador Profesional de QRs - IUSA Transportes</title>
+    <title>Generador QR - IUSA Transportes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         @media print {
             body * { visibility: hidden; }
-            #printable-area, #printable-area *, #grid-lote, #grid-lote * { visibility: visible; }
+            #printable-grid, #printable-grid * { visibility: visible; }
             .no-print { display: none !important; }
-            body { background: white; margin: 0; }
-            #grid-lote { position: absolute; left: 0; top: 0; width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+            body { background: white; margin: 0; padding: 0; }
+            #printable-grid { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%; 
+                display: grid !important; 
+                grid-template-columns: repeat(2, 1fr) !important; 
+                gap: 15px !important; 
+            }
         }
     </style>
 </head>
@@ -34,121 +42,123 @@
     </nav>
 
     <main class="max-w-6xl mx-auto px-4 py-8">
-        <div class="mb-6 no-print flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-bold text-slate-900">Generador e Impresor de Códigos QR</h1>
-                <p class="text-sm text-slate-500">Gestión de calcomanías individuales y por lote para unidades IUSA.</p>
-            </div>
-            <div class="flex space-x-2">
-                <button onclick="cambiarModo('individual')" id="btn-mode-ind" class="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl shadow">Individual</button>
-                <button onclick="cambiarModo('lote')" id="btn-mode-lote" class="px-4 py-2 bg-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-300 transition">Impresión por Lote (4x Hoja)</button>
-            </div>
+        
+        <div class="mb-6 no-print">
+            <h1 class="text-2xl font-bold text-slate-900">Generador de Códigos QR</h1>
+            <p class="text-sm text-slate-500">Genera e imprime calcomanías individuales o por rangos de unidades para IUSA.</p>
         </div>
 
-        <!-- VISTA INDIVIDUAL -->
-        <div id="seccion-individual" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- PANEL DE CONTROL SIMPLE -->
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 no-print">
-                <h2 class="text-base font-bold text-slate-800 border-b pb-2">Configurar Unidad</h2>
+                <h2 class="text-base font-bold text-slate-800 border-b pb-2">Selección de Unidades</h2>
+                
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">ID / Número de Camión:</label>
-                    <input type="text" id="input-camion" value="02" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Camión o Rango de Camiones:</label>
+                    <input type="text" id="input-unidades" value="01-04" placeholder="Ej. 02  ó  01-10  ó  01, 03, 05" 
+                           class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold">
+                    <p class="text-[11px] text-slate-400 mt-1.5 leading-tight">
+                        • Único: <code class="text-slate-700">02</code><br>
+                        • Rango: <code class="text-slate-700">01-10</code><br>
+                        • Varios: <code class="text-slate-700">01, 04, 07</code>
+                    </p>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Dominio (Automático):</label>
-                    <input type="text" id="input-domain" readonly class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-xs font-mono">
-                </div>
-                <button onclick="generarQRIndividual()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow text-sm transition">🔄 Actualizar Vista Previa</button>
-                <button onclick="window.print()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow text-sm transition">🖨️ Imprimir Calcomanía</button>
+
+                <button onclick="procesarYGenerarQR()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow text-sm transition">
+                    🔄 Generar Códigos QR
+                </button>
+
+                <hr class="my-2">
+
+                <button onclick="window.print()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow text-sm transition flex items-center justify-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H7a2 2 0 00-2 2v4h10z"></path></svg>
+                    <span>🖨️ Imprimir Calcomanías</span>
+                </button>
             </div>
 
-            <div class="md:col-span-2 flex justify-center">
-                <div id="printable-area" class="bg-white p-8 rounded-2xl border-2 border-dashed border-slate-300 shadow-md max-w-sm w-full text-center flex flex-col items-center justify-between">
-                    <div class="w-full border-b-2 border-red-600 pb-3 mb-4">
-                        <div class="inline-block bg-red-600 text-white font-black px-3 py-1 rounded text-sm tracking-widest uppercase">IUSA</div>
-                        <h3 class="font-extrabold text-slate-900 text-lg mt-1">TRANSPORTE DE PERSONAL</h3>
-                    </div>
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 my-2 inline-block">
-                        <div id="qrcode-single" class="flex justify-center"></div>
-                    </div>
-                    <div class="w-full mt-3">
-                        <div class="bg-slate-900 text-white py-2 rounded-lg font-extrabold text-xl mb-2">
-                            UNIDAD <span id="lbl-unidad-qr">02</span>
-                        </div>
-                        <p class="text-xs text-slate-700 font-semibold px-2">Escanea este código QR con tu celular para calificar el servicio o reportar incidencias.</p>
-                    </div>
+            <!-- CONTENEDOR DE HOJA IMPRESA -->
+            <div class="md:col-span-2">
+                <div id="printable-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Se renderizan los QR automáticamente -->
                 </div>
             </div>
+
         </div>
 
-        <!-- VISTA LOTE -->
-        <div id="seccion-lote" class="hidden space-y-6">
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm no-print flex flex-wrap gap-4 items-end">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Unidades (Separadas por comas):</label>
-                    <input type="text" id="input-lote-unidades" value="01, 02, 03, 04, 05, 06" class="px-3 py-2 rounded-xl border border-slate-300 text-sm w-80 focus:ring-2 focus:ring-blue-500">
-                </div>
-                <button onclick="generarQRLote()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm">Generar Lote</button>
-                <button onclick="window.print()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-sm">🖨️ Imprimir Cuadrícula</button>
-            </div>
-            <div id="grid-lote" class="grid grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-slate-300"></div>
-        </div>
     </main>
 
     <script>
         const dominioActual = window.location.origin;
-        document.getElementById('input-domain').value = dominioActual;
 
-        function cambiarModo(modo) {
-            if (modo === 'individual') {
-                document.getElementById('seccion-individual').classList.remove('hidden');
-                document.getElementById('seccion-lote').classList.add('hidden');
-                document.getElementById('btn-mode-ind').className = "px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl shadow";
-                document.getElementById('btn-mode-lote').className = "px-4 py-2 bg-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-300 transition";
-                generarQRIndividual();
-            } else {
-                document.getElementById('seccion-individual').classList.add('hidden');
-                document.getElementById('seccion-lote').classList.remove('hidden');
-                document.getElementById('btn-mode-lote').className = "px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl shadow";
-                document.getElementById('btn-mode-ind').className = "px-4 py-2 bg-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-300 transition";
-                generarQRLote();
+        function obtenerListaUnidades(entradatxt) {
+            let unidades = [];
+            entradatxt = entradatxt.trim();
+
+            if (entradatxt.includes('-')) {
+                // Es un rango (ej: 01-08)
+                const partes = entradatxt.split('-');
+                const inicio = parseInt(partes[0], 10);
+                const fin = parseInt(partes[1], 10);
+
+                if (!isNaN(inicio) && !isNaN(fin) && inicio <= fin) {
+                    for (let i = inicio; i <= fin; i++) {
+                        unidades.push(i < 10 ? '0' + i : '' + i);
+                    }
+                }
+            } else if (entradatxt.includes(',')) {
+                // Es una lista separada por comas (ej: 01, 03, 05)
+                unidades = entradatxt.split(',').map(u => u.trim()).filter(u => u.length > 0);
+            } else if (entradatxt.length > 0) {
+                // Es una sola unidad (ej: 02)
+                unidades.push(entradatxt);
             }
+
+            return unidades.length > 0 ? unidades : ['01'];
         }
 
-        function generarQRIndividual() {
-            const idCamion = document.getElementById('input-camion').value.trim() || '02';
-            const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idCamion)}`;
-            document.getElementById('lbl-unidad-qr').textContent = idCamion;
-            const container = document.getElementById('qrcode-single');
-            container.innerHTML = '';
-            new QRCode(container, { text: urlFinal, width: 180, height: 180, colorDark: "#0f172a", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
-        }
-
-        function generarQRLote() {
-            const unidades = document.getElementById('input-lote-unidades').value.split(',').map(u => u.trim()).filter(u => u.length > 0);
-            const gridContainer = document.getElementById('grid-lote');
+        function procesarYGenerarQR() {
+            const inputVal = document.getElementById('input-unidades').value;
+            const unidades = obtenerListaUnidades(inputVal);
+            const gridContainer = document.getElementById('printable-grid');
             gridContainer.innerHTML = '';
 
             unidades.forEach((uni, index) => {
-                const cardId = `qr-batch-${index}`;
+                const cardId = `qr-card-${index}`;
                 const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(uni)}`;
+
                 const cardHTML = `
-                    <div class="border-2 border-dashed border-slate-300 p-4 rounded-xl text-center flex flex-col items-center justify-between bg-white page-break">
-                        <div class="w-full border-b border-red-600 pb-2 mb-2">
-                            <span class="bg-red-600 text-white font-black px-2 py-0.5 rounded text-[10px]">IUSA</span>
-                            <span class="font-extrabold text-slate-900 text-xs ml-1">TRANSPORTE DE PERSONAL</span>
+                    <div class="bg-white p-5 rounded-2xl border-2 border-dashed border-slate-300 shadow-sm text-center flex flex-col items-center justify-between">
+                        <div class="w-full border-b-2 border-red-600 pb-2 mb-2">
+                            <span class="bg-red-600 text-white font-black px-2 py-0.5 rounded text-[10px] tracking-widest uppercase">IUSA</span>
+                            <span class="font-extrabold text-slate-900 text-xs ml-1 tracking-tight">TRANSPORTE DE PERSONAL</span>
                         </div>
-                        <div id="${cardId}" class="my-1 flex justify-center"></div>
+
+                        <div id="${cardId}" class="my-2 flex justify-center"></div>
+
                         <div class="w-full mt-2">
-                            <div class="bg-slate-900 text-white py-1 rounded font-extrabold text-sm mb-1">UNIDAD ${uni}</div>
-                            <p class="text-[9px] text-slate-600">Escanea para calificar o reportar.</p>
+                            <div class="bg-slate-900 text-white py-1.5 rounded-lg font-extrabold text-lg mb-1 tracking-wide">
+                                UNIDAD ${uni}
+                            </div>
+                            <p class="text-[10px] text-slate-600 font-medium">Escanea este código con tu celular para calificar o reportar.</p>
                         </div>
                     </div>
                 `;
                 gridContainer.insertAdjacentHTML('beforeend', cardHTML);
-                new QRCode(document.getElementById(cardId), { text: urlFinal, width: 130, height: 130, colorDark: "#0f172a", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
+
+                new QRCode(document.getElementById(cardId), {
+                    text: urlFinal,
+                    width: 140,
+                    height: 140,
+                    colorDark : "#0f172a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
             });
         }
-        generarQRIndividual();
+
+        // Generar al cargar inicialmente
+        procesarYGenerarQR();
     </script>
 </body>
 </html>
