@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrativo - Buzón de Reportes IUSA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+
+    <!-- BARRA DE NAVEGACIÓN UNIFICADA -->
+<nav class="bg-slate-900 text-white shadow-lg border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+        <div class="flex items-center space-x-3">
+            <div class="bg-red-600 text-white font-extrabold px-2.5 py-1 rounded text-sm tracking-wider">IUSA</div>
+            <span class="font-bold text-lg tracking-wide text-slate-100">Control Logístico de Transporte</span>
+        </div>
+        <div class="flex space-x-2 text-sm font-medium">
+            <a href="/" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📊 Procesador Excel</a>
+            <a href="/reportes.html" class="px-3 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md">📝 Buzón de Quejas</a>
+            <a href="/qr_generator.html" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📷 Generador QR</a>
+        </div>
+    </div>
+</nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- ENCABEZADO Y ESTADÍSTICAS RÁPIDAS -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Buzón de Evaluaciones y Reportes QR</h1>
+                <p class="text-sm text-slate-500">Gestión de retroalimentación de trabajadores en unidades de transporte IUSA.</p>
+            </div>
+            <button onclick="cargarReportes()" class="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>Actualizar Tabla</span>
+            </button>
+        </div>
+
+        <!-- TARJETAS DE KPIs -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-bold text-slate-400 uppercase">Total de Registros</p>
+                <p id="kpi-total" class="text-3xl font-extrabold text-slate-900 mt-1">0</p>
+            </div>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-bold text-slate-400 uppercase">Promedio de Puntuación</p>
+                <p id="kpi-promedio" class="text-3xl font-extrabold text-amber-500 mt-1">0.0 ★</p>
+            </div>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-bold text-slate-400 uppercase">Quejas / Reportes</p>
+                <p id="kpi-quejas" class="text-3xl font-extrabold text-red-600 mt-1">0</p>
+            </div>
+        </div>
+
+        <!-- FILTROS Y BÚSQUEDA -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex flex-wrap gap-3 items-center w-full md:w-auto">
+                <input type="text" id="filter-search" onkeyup="filtrarTabla()" placeholder="Buscar por Folio, Credencial o Camión..." 
+                       class="px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-full sm:w-64">
+                
+                <select id="filter-tipo" onchange="filtrarTabla()" class="px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <option value="TODOS">Todos los tipos</option>
+                    <option value="Calificación (Estrellas)">Solo Calificaciones</option>
+                    <option value="Queja / Reporte">Solo Quejas / Reportes</option>
+                    <option value="Sugerencia">Solo Sugerencias</option>
+                </select>
+            </div>
+            <span id="txt-contador" class="text-xs text-slate-500 font-medium">Mostrando 0 registros</span>
+        </div>
+
+        <!-- TABLA DE REPORTES -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <th class="p-4">Folio</th>
+                            <th class="p-4">Fecha / Hora</th>
+                            <th class="p-4">Camión</th>
+                            <th class="p-4">Credencial Emisor</th>
+                            <th class="p-4">Tipo</th>
+                            <th class="p-4">Puntuación</th>
+                            <th class="p-4">Comentario / Observación</th>
+                            <th class="p-4 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-body" class="divide-y divide-slate-100 text-sm">
+                        <tr>
+                            <td colspan="8" class="p-8 text-center text-slate-400 font-medium">Cargando reportes desde Supabase...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // CONFIGURACIÓN DE SUPABASE
+        const SUPABASE_URL = 'https://jjfcesrsexuxyamoghsx.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_tkHpyaqmhlm8HuQvcVwzPg_Q0hehaPF'; // ¡Asegúrate de colocar tu Anon Key aquí!
+
+        const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let listaReportesOriginal = [];
+
+        async function cargarReportes() {
+    const tbody = document.getElementById('tabla-body');
+    tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 font-medium">Cargando reportes desde Supabase...</td></tr>';
+
+    try {
+        // Ordenamos por 'id' descendente para mostrar los más recientes primero
+        const { data, error } = await clientSupabase
+            .from('reportes_recibidos')
+            .select('*')
+            .order('id', { ascending: false });
+
+        if (error) throw error;
+
+        listaReportesOriginal = data || [];
+        actualizarKPIs(listaReportesOriginal);
+        renderTabla(listaReportesOriginal);
+
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-red-500 font-medium">❌ Error al consultar Supabase: ${err.message || err}</td></tr>`;
+    }
+}
+
+        function actualizarKPIs(data) {
+            document.getElementById('kpi-total').textContent = data.length;
+
+            const quejas = data.filter(r => (r.tipo_envio || '').includes('Queja') || (r.tipo_envio || '').includes('Reporte')).length;
+            document.getElementById('kpi-quejas').textContent = quejas;
+
+            const puntuaciones = data.map(r => parseFloat(r.puntuacion) || 0).filter(p => p > 0);
+            if (puntuaciones.length > 0) {
+                const suma = puntuaciones.reduce((a, b) => a + b, 0);
+                const prom = (suma / puntuaciones.length).toFixed(1);
+                document.getElementById('kpi-promedio').textContent = `${prom} ★`;
+            } else {
+                document.getElementById('kpi-promedio').textContent = 'N/A';
+            }
+        }
+
+        function renderTabla(data) {
+            const tbody = document.getElementById('tabla-body');
+            document.getElementById('txt-contador').textContent = `Mostrando ${data.length} de ${listaReportesOriginal.length} registros`;
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 font-medium">No se encontraron reportes almacenados.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(r => {
+                const fecha = r.fecha_hora ? new Date(r.fecha_hora).toLocaleString('es-MX') : '--';
+                const estrellas = '★'.repeat(parseInt(r.puntuacion) || 0) + '☆'.repeat(5 - (parseInt(r.puntuacion) || 0));
+                
+                let badgeClass = 'bg-slate-100 text-slate-700';
+                if ((r.tipo_envio || '').includes('Queja')) badgeClass = 'bg-red-100 text-red-700';
+                else if ((r.tipo_envio || '').includes('Calificación')) badgeClass = 'bg-emerald-100 text-emerald-700';
+                else if ((r.tipo_envio || '').includes('Sugerencia')) badgeClass = 'bg-amber-100 text-amber-700';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-4 font-bold text-blue-900">${r.folio_reporte || 'N/A'}</td>
+                        <td class="p-4 text-xs text-slate-500 whitespace-nowrap">${fecha}</td>
+                        <td class="p-4 font-bold text-slate-800">Camión ${r.id_camion || '--'}</td>
+                        <td class="p-4 font-mono text-xs text-slate-600">${r.credencial_emisor || '--'}</td>
+                        <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${badgeClass}">${r.tipo_envio || 'General'}</span></td>
+                        <td class="p-4 text-amber-500 font-bold tracking-widest">${estrellas}</td>
+                        <td class="p-4 text-slate-600 max-w-xs truncate" title="${r.comentario || ''}">${r.comentario || '<span class="text-slate-300">Sin comentarios</span>'}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="eliminarReporte(${r.id})" class="text-xs text-red-500 hover:text-red-700 font-semibold hover:underline">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filtrarTabla() {
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const tipo = document.getElementById('filter-tipo').value;
+
+            const filtrados = listaReportesOriginal.filter(r => {
+                const matchSearch = (r.folio_reporte || '').toLowerCase().includes(search) ||
+                                    (r.credencial_emisor || '').toLowerCase().includes(search) ||
+                                    (r.id_camion || '').toLowerCase().includes(search);
+                const matchTipo = (tipo === 'TODOS') || (r.tipo_envio === tipo);
+
+                return matchSearch && matchTipo;
+            });
+
+            renderTabla(filtrados);
+        }
+
+        async function eliminarReporte(id) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este registro?')) return;
+
+            try {
+                const { error } = await clientSupabase.from('reportes_recibidos').delete().eq('id', id);
+                if (error) throw error;
+                cargarReportes();
+            } catch (err) {
+                alert('Error al eliminar: ' + (err.message || err));
+            }
+        }
+
+        // Cargar al abrir la página
+        cargarReportes();
+    </script>
+</body>
+</html>

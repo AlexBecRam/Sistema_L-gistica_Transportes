@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de QRs - IUSA Transportes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Librería para generar códigos QR en el cliente -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @media print {
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+
+    <!-- BARRA DE NAVEGACIÓN UNIFICADA -->
+<nav class="bg-slate-900 text-white shadow-lg border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+        <div class="flex items-center space-x-3">
+            <div class="bg-red-600 text-white font-extrabold px-2.5 py-1 rounded text-sm tracking-wider">IUSA</div>
+            <span class="font-bold text-lg tracking-wide text-slate-100">Control Logístico de Transporte</span>
+        </div>
+        <div class="flex space-x-2 text-sm font-medium">
+            <a href="/" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📊 Procesador Excel</a>
+            <a href="/reportes.html" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📝 Buzón de Quejas</a>
+            <a href="/qr_generator.html" class="px-3 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md">📷 Generador QR</a>
+        </div>
+    </div>
+</nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        
+        <div class="mb-6 no-print">
+            <h1 class="text-2xl font-bold text-slate-900">Generador e Impresor de Códigos QR</h1>
+            <p class="text-sm text-slate-500">Crea las identificaciones físicas para pegar en cada camioneta o unidad de IUSA.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- CONTROLES -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 no-print">
+                <h2 class="text-base font-bold text-slate-800 border-b pb-2">Configurar Unidad</h2>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">ID / Número de Camión:</label>
+                    <input type="text" id="input-camion" value="02" placeholder="Ej. 02, 05, 12" 
+                           class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Dominio / Servidor Web:</label>
+                    <input type="text" id="input-domain" value="http://127.0.0.1:8000" placeholder="https://tu-app.onrender.com" 
+                           class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <p class="text-[10px] text-slate-400 mt-1">Sustituye por tu enlace de Render cuando lo subas a producción.</p>
+                </div>
+
+                <button onclick="generarQR()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow text-sm transition">
+                    🔄 Generar Código QR
+                </button>
+
+                <hr class="my-2">
+
+                <button onclick="window.print()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow text-sm transition flex items-center justify-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H7a2 2 0 00-2 2v4h10z"></path></svg>
+                    <span>Imprimir Calcomanía</span>
+                </button>
+            </div>
+
+            <!-- VISTA PREVIA / PLANTILLA DE IMPRESIÓN -->
+            <div class="md:col-span-2 flex justify-center">
+                <div id="printable-area" class="bg-white p-8 rounded-2xl border-2 border-dashed border-slate-300 shadow-md max-w-sm w-full text-center flex flex-col items-center justify-between">
+                    
+                    <!-- ENCABEZADO HOJA IMPRESA -->
+                    <div class="w-full border-b-2 border-red-600 pb-3 mb-4">
+                        <div class="inline-block bg-red-600 text-white font-black px-3 py-1 rounded text-sm tracking-widest uppercase">IUSA</div>
+                        <h3 class="font-extrabold text-slate-900 text-lg mt-1 tracking-tight">TRANSPORTE DE PERSONAL</h3>
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Evaluación y Atención Ciudadana</p>
+                    </div>
+
+                    <!-- CAJA DEL QR -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 my-2 inline-block">
+                        <div id="qrcode" class="flex justify-center"></div>
+                    </div>
+
+                    <!-- NÚMERO DE UNIDAD Y INSTRUCCIÓN -->
+                    <div class="w-full mt-3">
+                        <div class="bg-slate-900 text-white py-2 rounded-lg font-extrabold text-xl mb-2 tracking-wide">
+                            UNIDAD <span id="lbl-unidad-qr">02</span>
+                        </div>
+                        <p class="text-xs text-slate-700 font-semibold px-2">
+                            📱 Escanea este código QR con la cámara de tu celular para calificar el servicio o reportar alguna incidencia.
+                        </p>
+                    </div>
+
+                    <!-- FOOTER IMPRESO -->
+                    <div class="w-full border-t border-slate-200 pt-3 mt-4 text-[10px] text-slate-400 font-medium">
+                        Sistema de Control Logístico y Evaluaciones • IUSA
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        let qrcodeObj = null;
+
+        function generarQR() {
+            const idCamion = document.getElementById('input-camion').value.trim() || '02';
+            let domain = document.getElementById('input-domain').value.trim();
+            
+            // Eliminar diagonal final si la tiene
+            if (domain.endsWith('/')) domain = domain.slice(0, -1);
+
+            // Construir la URL completa que abrirá el celular
+            const urlFinal = `${domain}/evaluacion.html?id_camion=${encodeURIComponent(idCamion)}`;
+
+            // Actualizar número en la vista previa
+            document.getElementById('lbl-unidad-qr').textContent = idCamion;
+
+            // Limpiar contenedor
+            const container = document.getElementById('qrcode');
+            container.innerHTML = '';
+
+            // Dibujar QR
+            qrcodeObj = new QRCode(container, {
+                text: urlFinal,
+                width: 200,
+                height: 200,
+                colorDark : "#0f172a",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+
+        // Generar al cargar
+        generarQR();
+    </script>
+</body>
+</html>
