@@ -27,17 +27,17 @@
             </div>
         </div>
 
-        <div class="p-5 sm:p-6 space-y-4 sm:space-y-5">
+        <div class="p-4 sm:p-6 space-y-4 sm:space-y-5">
             
             <!-- TARJETA DE UNIDAD DETECTADA -->
-            <div class="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-200 text-xs space-y-2 relative flex flex-col sm:flex-row items-center sm:space-x-4 gap-3 sm:gap-0">
-                <span id="badge-estatus" class="sm:absolute sm:top-3 sm:right-3 bg-blue-100 text-blue-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+            <div class="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-200 text-xs space-y-3 relative flex flex-col sm:flex-row items-center sm:space-x-4">
+                <span id="badge-estatus" class="self-end sm:absolute sm:top-3 sm:right-3 bg-blue-100 text-blue-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
                     Buscando...
                 </span>
 
                 <!-- FOTO DEL OPERADOR -->
                 <div id="contenedor-foto" class="flex-shrink-0">
-                    <div class="w-16 h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1">
+                    <div class="w-20 h-24 sm:w-16 sm:h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1">
                         [ FOTO ]
                     </div>
                 </div>
@@ -52,7 +52,7 @@
                 </div>
             </div>
 
-            <!-- CONTENEDOR OCULTO DE LA CÁMARA (ESCÁNER QR / CÓDIGO DE BARRAS) -->
+            <!-- CONTENEDOR OCULTO DE LA CÁMARA -->
             <div id="contenedor-camara" class="hidden bg-slate-900 p-4 rounded-2xl text-center space-y-3">
                 <div class="relative w-full h-48 bg-black rounded-xl overflow-hidden flex items-center justify-center">
                     <video id="video-camara" autoplay playsinline class="w-full h-full object-cover"></video>
@@ -181,12 +181,12 @@
                         document.getElementById('credencial-chofer').textContent = choferEncontrado.credencial_chofer || 'N/A';
                         document.getElementById('empresa-chofer').textContent = choferEncontrado.empresa || 'IUSA';
                         document.getElementById('badge-estatus').textContent = 'Conectado';
-                        document.getElementById('badge-estatus').className = 'sm:absolute sm:top-3 sm:right-3 bg-emerald-100 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
+                        document.getElementById('badge-estatus').className = 'self-end sm:absolute sm:top-3 sm:right-3 bg-emerald-100 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
 
                         if (choferEncontrado.credencial_chofer) {
                             const fotoUrl = `/static/Fotos_Op/${String(choferEncontrado.credencial_chofer).trim()}.jpg`;
                             document.getElementById('contenedor-foto').innerHTML = `
-                                <img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-16 h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1\'>[ SIN FOTO ]</div>';" alt="Foto Operador" class="w-16 h-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+                                <img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-20 h-24 sm:w-16 sm:h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1\'>[ SIN FOTO ]</div>';" alt="Foto Operador" class="w-20 h-24 sm:w-16 sm:h-20 object-cover rounded-xl border border-slate-300 shadow-sm">
                             `;
                         }
                     } else {
@@ -194,7 +194,7 @@
                         document.getElementById('credencial-chofer').textContent = '--';
                         document.getElementById('empresa-chofer').textContent = '--';
                         document.getElementById('badge-estatus').textContent = 'Sin Asignar';
-                        document.getElementById('badge-estatus').className = 'sm:absolute sm:top-3 sm:right-3 bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
+                        document.getElementById('badge-estatus').className = 'self-end sm:absolute sm:top-3 sm:right-3 bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
                     }
                 }
             } catch (err) {
@@ -202,7 +202,6 @@
             }
         }
 
-        // LÓGICA DE APERTURA DE CÁMARA PARA MÓVILES (HTTPS COMPATIBLE)
         async function iniciarEscaneoCamara() {
             const contenedorCamara = document.getElementById('contenedor-camara');
             const videoElem = document.getElementById('video-camara');
@@ -297,7 +296,6 @@
             btn.textContent = 'Enviando...';
 
             try {
-                // Inserción validada para la tabla reportes_recibidos de Supabase
                 const { error } = await clientSupabase
                     .from('reportes_recibidos')
                     .insert([

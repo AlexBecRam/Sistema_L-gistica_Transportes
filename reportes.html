@@ -6,82 +6,88 @@
     <title>Panel Administrativo - Buzón de Reportes IUSA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans flex flex-col justify-between">
 
-    <!-- BARRA DE NAVEGACIÓN UNIFICADA -->
-<nav class="bg-slate-900 text-white shadow-lg border-b border-slate-800 no-print">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-            <div class="flex items-center space-x-3">
-                <img src="/static/Iusa-logotipo.jpg" 
-                     onerror="this.style.display='none'; document.getElementById('logo-fallback').classList.remove('hidden');" 
-                     alt="Logo IUSA" 
-                     class="h-9 w-auto object-contain rounded bg-white p-1 shadow-sm">
-                <!-- //<div id="logo-fallback" class="hidden bg-red-600 text-white font-extrabold px-2.5 py-1 rounded text-sm tracking-wider">IUSA</div> -->
-                <span class="font-bold text-lg tracking-wide text-slate-100">Sistema generador de reportes IUSA</span>
+    <!-- BARRA DE NAVEGACIÓN UNIFICADA Y RESPONSIVA -->
+    <nav class="bg-slate-900 text-white shadow-lg border-b border-slate-800 no-print">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+                <div class="flex items-center space-x-2">
+                    <img src="/static/Iusa-logotipo.jpg" 
+                         onerror="this.style.display='none'; document.getElementById('logo-fallback').classList.remove('hidden');" 
+                         alt="Logo IUSA" 
+                         class="h-8 sm:h-9 w-auto object-contain rounded bg-white p-1 shadow-sm">
+                    <div id="logo-fallback" class="hidden bg-red-600 text-white font-extrabold px-2 py-1 rounded text-xs tracking-wider">IUSA</div>
+                    <span class="font-bold text-xs sm:text-sm tracking-wide text-slate-100">Buzón IUSA</span>
+                </div>
             </div>
-        <div class="flex space-x-2 text-sm font-medium">
-            <a href="/" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📊 Reportes Operativos</a>
-            <a href="/reportes.html" class="px-3 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md">📝 Evaluación Servicio</a>
-            <a href="/qr_generator.html" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📷 Generador QR</a>
-        <button onclick="cerrarSesion()" class="ml-3 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition text-xs shadow flex items-center space-x-1">
-    <span>🔒 Cerrar Sesión</span>
-</button>
+            <div class="flex items-center flex-wrap justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium w-full md:w-auto">
+                <a href="/" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📊 Reportes</a>
+                <a href="/reportes" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">📝 Evaluación</a>
+                <a href="/qr_generator" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📷 QR</a>
+                
+                <!-- BOTÓN CERRAR SESIÓN -->
+                <button onclick="cerrarSesion()" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition text-xs shadow flex items-center space-x-1">
+                    <i class="fa-solid fa-lock text-[10px]"></i>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
     <!-- CONTENIDO PRINCIPAL -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 flex-grow w-full">
         
         <!-- ENCABEZADO Y ESTADÍSTICAS RÁPIDAS -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-                <h1 class="text-2xl font-bold text-slate-900">Buzón de Evaluaciones </h1>
-                <p class="text-sm text-slate-500">Gestión de reportes de trabajadores en unidades de transporte IUSA.</p>
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Buzón de Evaluaciones</h1>
+                <p class="text-xs sm:text-sm text-slate-500">Gestión de reportes de trabajadores en unidades de transporte IUSA.</p>
             </div>
-            <button onclick="cargarReportes()" class="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            <button onclick="cargarReportes()" class="inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow transition w-full sm:w-auto">
+                <i class="fa-solid fa-rotate"></i>
                 <span>Actualizar Tabla</span>
             </button>
         </div>
 
         <!-- TARJETAS DE KPIs -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <p class="text-xs font-bold text-slate-400 uppercase">Total de Registros</p>
-                <p id="kpi-total" class="text-3xl font-extrabold text-slate-900 mt-1">0</p>
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-[11px] sm:text-xs font-bold text-slate-400 uppercase">Total de Registros</p>
+                <p id="kpi-total" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">0</p>
             </div>
-            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <p class="text-xs font-bold text-slate-400 uppercase">Promedio de Puntuación</p>
-                <p id="kpi-promedio" class="text-3xl font-extrabold text-amber-500 mt-1">0.0 ★</p>
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-[11px] sm:text-xs font-bold text-slate-400 uppercase">Promedio de Puntuación</p>
+                <p id="kpi-promedio" class="text-2xl sm:text-3xl font-extrabold text-amber-500 mt-1">0.0 ★</p>
             </div>
-            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <p class="text-xs font-bold text-slate-400 uppercase">Quejas / Reportes</p>
-                <p id="kpi-quejas" class="text-3xl font-extrabold text-red-600 mt-1">0</p>
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-[11px] sm:text-xs font-bold text-slate-400 uppercase">Quejas / Reportes</p>
+                <p id="kpi-quejas" class="text-2xl sm:text-3xl font-extrabold text-red-600 mt-1">0</p>
             </div>
         </div>
 
         <!-- FILTROS Y BÚSQUEDA -->
-        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center justify-between">
-            <div class="flex flex-wrap gap-3 items-center w-full md:w-auto">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div class="flex flex-col sm:flex-row gap-3 items-center w-full">
                 <input type="text" id="filter-search" onkeyup="filtrarTabla()" placeholder="Buscar por Folio, Credencial o Camión..." 
-                       class="px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-full sm:w-64">
+                       class="px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-full sm:w-72">
                 
-                <select id="filter-tipo" onchange="filtrarTabla()" class="px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <select id="filter-tipo" onchange="filtrarTabla()" class="px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-full sm:w-auto bg-white">
                     <option value="TODOS">Todos los tipos</option>
                     <option value="Calificación (Estrellas)">Solo Calificaciones</option>
                     <option value="Queja / Reporte">Solo Quejas / Reportes</option>
                     <option value="Sugerencia">Solo Sugerencias</option>
                 </select>
             </div>
-            <span id="txt-contador" class="text-xs text-slate-500 font-medium">Mostrando 0 registros</span>
+            <span id="txt-contador" class="text-xs text-slate-500 font-medium whitespace-nowrap">Mostrando 0 registros</span>
         </div>
 
         <!-- TABLA DE REPORTES -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse min-w-[750px]">
                     <thead>
                         <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
                             <th class="p-4">Folio</th>
@@ -94,7 +100,7 @@
                             <th class="p-4 text-center">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody id="tabla-body" class="divide-y divide-slate-100 text-sm">
+                    <tbody id="tabla-body" class="divide-y divide-slate-100 text-xs sm:text-sm">
                         <tr>
                             <td colspan="8" class="p-8 text-center text-slate-400 font-medium">Cargando reportes desde Supabase...</td>
                         </tr>
@@ -105,61 +111,51 @@
 
     </main>
 
+    <!-- Footer -->
+    <footer class="text-center py-6 text-xs text-slate-400 no-print">
+        <p>Sistema generador de reportes IUSA &copy; 2026</p>
+    </footer>
+
     <script>
-    // 1. VERIFICACIÓN DE SEGURIDAD (Redirige a login si no hay sesión)
-    const sessionData = localStorage.getItem('iusa_session');
-    if (!sessionData) {
-        window.location.href = '/login';
-    }
-
-    // 2. FUNCIÓN PARA CERRAR SESIÓN
-    async function cerrarSesion() {
-        localStorage.removeItem('iusa_session');
-        if (typeof clientSupabase !== 'undefined' && clientSupabase.auth) {
-            await clientSupabase.auth.signOut();
+        const sessionData = localStorage.getItem('iusa_session');
+        if (!sessionData) {
+            window.location.href = '/login';
         }
-        window.location.href = '/login';
-    }
 
-    // ... AQUÍ CONTINÚA TODO TU CÓDIGO ORIGINAL DE REPORTES SIN MODIFICAR NADA MÁS ...
-        
-// VERIFICACIÓN DE SEGURIDAD (Agregado al inicio de script)
+        async function cerrarSesion() {
+            localStorage.removeItem('iusa_session');
+            if (typeof clientSupabase !== 'undefined' && clientSupabase.auth) {
+                await clientSupabase.auth.signOut();
+            }
+            window.location.href = '/login';
+        }
 
-// Función para Cerrar Sesión (para agregar al menú superior)
-async function cerrarSesion() {
-    localStorage.removeItem('iusa_session');
-    await clientSupabase.auth.signOut();
-    window.location.href = '/login';
-}
-
-        // CONFIGURACIÓN DE SUPABASE
         const SUPABASE_URL = 'https://jjfcesrsexuxyamoghsx.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_tkHpyaqmhlm8HuQvcVwzPg_Q0hehaPF'; // ¡Asegúrate de colocar tu Anon Key aquí!
+        const SUPABASE_KEY = 'sb_publishable_tkHpyaqmhlm8HuQvcVwzPg_Q0hehaPF';
 
         const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let listaReportesOriginal = [];
 
         async function cargarReportes() {
-    const tbody = document.getElementById('tabla-body');
-    tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 font-medium">Cargando reportes desde Supabase...</td></tr>';
+            const tbody = document.getElementById('tabla-body');
+            tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 font-medium">Cargando reportes desde Supabase...</td></tr>';
 
-    try {
-        // Ordenamos por 'id' descendente para mostrar los más recientes primero
-        const { data, error } = await clientSupabase
-            .from('reportes_recibidos')
-            .select('*')
-            .order('id', { ascending: false });
+            try {
+                const { data, error } = await clientSupabase
+                    .from('reportes_recibidos')
+                    .select('*')
+                    .order('id', { ascending: false });
 
-        if (error) throw error;
+                if (error) throw error;
 
-        listaReportesOriginal = data || [];
-        actualizarKPIs(listaReportesOriginal);
-        renderTabla(listaReportesOriginal);
+                listaReportesOriginal = data || [];
+                actualizarKPIs(listaReportesOriginal);
+                renderTabla(listaReportesOriginal);
 
-    } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-red-500 font-medium">❌ Error al consultar Supabase: ${err.message || err}</td></tr>`;
-    }
-}
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-red-500 font-medium">❌ Error al consultar Supabase: ${err.message || err}</td></tr>`;
+            }
+        }
 
         function actualizarKPIs(data) {
             document.getElementById('kpi-total').textContent = data.length;
@@ -240,7 +236,6 @@ async function cerrarSesion() {
             }
         }
 
-        // Cargar al abrir la página
         cargarReportes();
     </script>
 </body>
