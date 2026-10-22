@@ -6,30 +6,32 @@
     <title>Gestión de Transporte - IUSA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 font-sans">
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-3 sm:p-4 font-sans">
 
-    <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden border border-slate-200 my-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden border border-slate-200 my-2 sm:my-4">
         
-        <!-- ENCABEZADO AZUL INSTITUCIONAL CON LOGOTIPO EN LA ESQUINA SUPERIOR IZQUIERDA -->
-        <div class="bg-indigo-900 text-white p-5 flex items-center justify-between relative">
-            <img src="/static/Iusa-logotipo.jpg" 
-     onerror="this.style.display='none'; document.getElementById('logo-eval-fallback').classList.remove('hidden');" 
-     alt="Logo IUSA" 
-     class="h-10 w-auto object-contain rounded bg-white p-1 shadow-sm">
-<div id="logo-eval-fallback" class="hidden bg-red-600 text-white font-black px-2.5 py-1 rounded text-xs tracking-wider shadow">IUSA</div>
-            
+        <!-- ENCABEZADO INSTITUCIONAL -->
+        <div class="bg-indigo-900 text-white p-4 sm:p-5 flex items-center justify-between relative">
+            <div class="flex items-center space-x-3">
+                <img src="/static/Iusa-logotipo.jpg" 
+                     onerror="this.style.display='none'; document.getElementById('logo-eval-fallback').classList.remove('hidden');" 
+                     alt="Logo IUSA" 
+                     class="h-9 sm:h-10 w-auto object-contain rounded bg-white p-1 shadow-sm">
+                <div id="logo-eval-fallback" class="hidden bg-red-600 text-white font-black px-2.5 py-1 rounded text-xs tracking-wider shadow">IUSA</div>
+            </div>
             <div class="text-right">
-                <h1 class="text-xl font-extrabold tracking-wide">Gestión de Transporte</h1>
-                <p class="text-[10px] font-bold text-indigo-200 tracking-widest uppercase mt-0.5">IUSA TRANSPORTES</p>
+                <h1 class="text-base sm:text-xl font-extrabold tracking-wide">Gestión de Transporte</h1>
+                <p class="text-[9px] sm:text-[10px] font-bold text-indigo-200 tracking-widest uppercase mt-0.5">IUSA TRANSPORTES</p>
             </div>
         </div>
 
-        <div class="p-6 space-y-5">
+        <div class="p-5 sm:p-6 space-y-4 sm:space-y-5">
             
-            <!-- TARJETA DE UNIDAD DETECTADA CON FOTO Y DATOS DEL OPERADOR -->
-            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2 relative flex items-center space-x-4">
-                <span id="badge-estatus" class="absolute top-3 right-3 bg-blue-100 text-blue-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+            <!-- TARJETA DE UNIDAD DETECTADA -->
+            <div class="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-200 text-xs space-y-2 relative flex flex-col sm:flex-row items-center sm:space-x-4 gap-3 sm:gap-0">
+                <span id="badge-estatus" class="sm:absolute sm:top-3 sm:right-3 bg-blue-100 text-blue-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
                     Buscando...
                 </span>
 
@@ -41,12 +43,27 @@
                 </div>
 
                 <!-- DATOS DEL OPERADOR Y UNIDAD -->
-                <div class="space-y-1 pr-12">
+                <div class="space-y-1 w-full sm:pr-12 text-center sm:text-left">
                     <p class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">UNIDAD DETECTADA</p>
                     <p class="text-slate-800 font-semibold">Número de Camión: <span id="num-camion" class="font-bold text-slate-900">--</span></p>
                     <p class="text-slate-800 font-semibold">Nombre del Chofer: <span id="nombre-chofer" class="font-bold text-blue-900">Cargando...</span></p>
                     <p class="text-slate-800 font-semibold">Credencial Chofer: <span id="credencial-chofer" class="font-mono font-bold text-slate-900">--</span></p>
                     <p class="text-slate-800 font-semibold">Empresa: <span id="empresa-chofer" class="font-bold text-slate-700">--</span></p>
+                </div>
+            </div>
+
+            <!-- CONTENEDOR OCULTO DE LA CÁMARA (ESCÁNER QR / CÓDIGO DE BARRAS) -->
+            <div id="contenedor-camara" class="hidden bg-slate-900 p-4 rounded-2xl text-center space-y-3">
+                <div class="relative w-full h-48 bg-black rounded-xl overflow-hidden flex items-center justify-center">
+                    <video id="video-camara" autoplay playsinline class="w-full h-full object-cover"></video>
+                    <div class="absolute inset-0 border-2 border-emerald-500/50 pointer-events-none flex items-center justify-center">
+                        <div class="w-3/4 h-12 border-2 border-dashed border-emerald-400 rounded-lg animate-pulse"></div>
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-2">
+                    <button type="button" onclick="cerrarCamara()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition">
+                        ✕ Cerrar Cámara
+                    </button>
                 </div>
             </div>
 
@@ -59,8 +76,9 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-2">1. Credencial del Colaborador:</label>
                     
-                    <button type="button" class="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow text-xs transition flex items-center justify-center space-x-2 mb-2">
-                        <span>📷 Escanear Código de Barras</span>
+                    <button type="button" onclick="iniciarEscaneoCamara()" class="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow text-xs transition flex items-center justify-center space-x-2 mb-2">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Escanear Código de Barras / QR</span>
                     </button>
                     
                     <p class="text-[11px] text-slate-400 mb-1">O escribe tu número de credencial manualmente:</p>
@@ -87,7 +105,7 @@
                     </select>
                 </div>
 
-                <!-- OPCIÓN 1: SECCIÓN DE ESTRELLAS (Muestran vacías) -->
+                <!-- OPCIÓN 1: SECCIÓN DE ESTRELLAS -->
                 <div id="seccion-estrellas" class="hidden pt-2 border-t border-slate-100 text-center">
                     <label class="block text-xs font-bold text-slate-700 mb-1">Puntuación del Servicio:</label>
                     <div class="flex justify-center space-x-2 text-3xl cursor-pointer" id="estrellas-container">
@@ -101,7 +119,7 @@
                     <input type="hidden" id="calificacion-val" value="0">
                 </div>
 
-                <!-- OPCIÓN 2: MENÚ DESPLEGABLE CON LAS 8 OPCIONES DE INCIDENCIAS -->
+                <!-- OPCIÓN 2: MENÚ DESPLEGABLE DE INCIDENCIAS -->
                 <div id="seccion-incidencias" class="hidden pt-2 border-t border-slate-100">
                     <label class="block text-xs font-bold text-slate-700 mb-1">Selecciona el Motivo de la Incidencia:</label>
                     <select id="motivo-incidencia"
@@ -138,6 +156,7 @@
 
         let choferActual = null;
         let calificacionSeleccionada = 0;
+        let mediaStream = null;
 
         async function cargarDatosUnidad() {
             const numLimpio = idCamionParam.replace(/\D/g, '');
@@ -162,25 +181,52 @@
                         document.getElementById('credencial-chofer').textContent = choferEncontrado.credencial_chofer || 'N/A';
                         document.getElementById('empresa-chofer').textContent = choferEncontrado.empresa || 'IUSA';
                         document.getElementById('badge-estatus').textContent = 'Conectado';
-                        document.getElementById('badge-estatus').className = 'absolute top-3 right-3 bg-emerald-100 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
+                        document.getElementById('badge-estatus').className = 'sm:absolute sm:top-3 sm:right-3 bg-emerald-100 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
 
                         if (choferEncontrado.credencial_chofer) {
                             const fotoUrl = `/static/Fotos_Op/${String(choferEncontrado.credencial_chofer).trim()}.jpg`;
                             document.getElementById('contenedor-foto').innerHTML = `
-    <img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-16 h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1\'>[ SIN FOTO ]</div>';" alt="Foto Operador" class="w-16 h-20 object-cover rounded-xl border border-slate-300 shadow-sm">
-`;
+                                <img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-16 h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1\'>[ SIN FOTO ]</div>';" alt="Foto Operador" class="w-16 h-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+                            `;
                         }
                     } else {
                         document.getElementById('nombre-chofer').textContent = 'Información no registrada';
                         document.getElementById('credencial-chofer').textContent = '--';
                         document.getElementById('empresa-chofer').textContent = '--';
                         document.getElementById('badge-estatus').textContent = 'Sin Asignar';
-                        document.getElementById('badge-estatus').className = 'absolute top-3 right-3 bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
+                        document.getElementById('badge-estatus').className = 'sm:absolute sm:top-3 sm:right-3 bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
                     }
                 }
             } catch (err) {
                 console.error("Error consultando operador:", err);
             }
+        }
+
+        // LÓGICA DE APERTURA DE CÁMARA PARA MÓVILES (HTTPS COMPATIBLE)
+        async function iniciarEscaneoCamara() {
+            const contenedorCamara = document.getElementById('contenedor-camara');
+            const videoElem = document.getElementById('video-camara');
+            
+            contenedorCamara.classList.remove('hidden');
+
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                videoElem.srcObject = mediaStream;
+            } catch (err) {
+                console.error("Error al acceder a la cámara:", err);
+                alert("No se pudo acceder a la cámara. Asegúrate de otorgar los permisos en tu navegador o escribe tu credencial manualmente.");
+                contenedorCamara.classList.add('hidden');
+            }
+        }
+
+        function cerrarCamara() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            document.getElementById('contenedor-camara').classList.add('hidden');
         }
 
         function cambiarTipoRegistro() {
@@ -226,8 +272,8 @@
 
             const btn = document.getElementById('btn-enviar');
             const alerta = document.getElementById('alerta-mensaje');
-            const credencialUsuario = document.getElementById('credencial-usuario').value;
-            const pinSeguridad = document.getElementById('pin-seguridad').value;
+            const credencialUsuario = document.getElementById('credencial-usuario').value.trim();
+            const pinSeguridad = document.getElementById('pin-seguridad').value.trim();
             const categoria = document.getElementById('categoria-registro').value;
 
             let tipoIncidenciaFinal = '';
@@ -251,6 +297,7 @@
             btn.textContent = 'Enviando...';
 
             try {
+                // Inserción validada para la tabla reportes_recibidos de Supabase
                 const { error } = await clientSupabase
                     .from('reportes_recibidos')
                     .insert([
@@ -275,10 +322,11 @@
                 setCalificacion(0);
                 document.getElementById('seccion-estrellas').classList.add('hidden');
                 document.getElementById('seccion-incidencias').classList.add('hidden');
+                cerrarCamara();
 
             } catch (err) {
                 console.error("Error guardando registro:", err);
-                alerta.textContent = '❌ Error al enviar el registro. Revisa la conexión.';
+                alerta.textContent = '❌ Error al enviar el registro. Revisa que la credencial y el PIN sean correctos.';
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-red-100 text-red-800 shadow-sm';
                 alerta.classList.remove('hidden');
             } finally {
