@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Sistema de Transportes IUSA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-900 min-h-screen flex items-center justify-center p-4 font-sans">
+
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 border border-slate-200">
+        
+        <!-- ENCABEZADO: LOGOTIPO Y TÍTULO MODIFICADO -->
+        <div class="text-center space-y-3 mb-6">
+            <!-- LOGOTIPO IUSA -->
+            <div class="flex justify-center">
+                <img src="/static/Iusa-logotipo.jpg" 
+     onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'bg-red-600 text-white font-extrabold px-4 py-1.5 rounded-lg text-lg tracking-wider shadow\'>IUSA</div>';" 
+     alt="Logo IUSA" 
+     class="h-14 w-auto object-contain">
+            </div>
+
+            <!-- TÍTULO MODIFICADO -->
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">Sistema de Transportes IUSA</h1>
+            <p class="text-xs text-slate-500 font-medium">Ingresa tus credenciales para acceder al sistema administrativo</p>
+        </div>
+
+        <!-- ALERTA DE ERRORES DE AUTENTICACIÓN -->
+        <div id="alerta-error" class="hidden mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-bold text-center"></div>
+
+        <!-- FORMULARIO DE INICIO DE SESIÓN -->
+        <form id="form-login" onsubmit="iniciarSesion(event)" class="space-y-4">
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Correo Electrónico:</label>
+                <input type="email" id="email" required placeholder="admin@iusa.com.mx" 
+                       class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-800">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Contraseña:</label>
+                <input type="password" id="password" required placeholder="••••••••" 
+                       class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-800">
+            </div>
+
+            <button type="submit" id="btn-login" 
+                    class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg text-xs transition flex items-center justify-center space-x-2">
+                <span>🔐 Iniciar Sesión</span>
+            </button>
+        </form>
+
+        <div class="mt-6 pt-4 border-t border-slate-100 text-center text-[10px] text-slate-400 font-medium">
+            Acceso restringido únicamente a personal autorizado • IUSA Transportes
+        </div>
+
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://jjfcesrsexuxyamoghsx.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_tkHpyaqmhlm8HuQvcVwzPg_Q0hehaPF';
+        const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Si ya hay sesión activa, redirige automáticamente al inicio
+        if (localStorage.getItem('iusa_session')) {
+            window.location.href = '/';
+        }
+
+        async function iniciarSesion(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('btn-login');
+            const alerta = document.getElementById('alerta-error');
+
+            btn.disabled = true;
+            btn.textContent = 'Verificando...';
+            alerta.classList.add('hidden');
+
+            try {
+                const { data, error } = await clientSupabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) throw error;
+
+                // Guardar la sesión activa
+                localStorage.setItem('iusa_session', JSON.stringify(data.session));
+                window.location.href = '/';
+
+            } catch (err) {
+                console.error("Error en login:", err);
+                alerta.textContent = '❌ Credenciales incorrectas o usuario no autorizado.';
+                alerta.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>🔐 Iniciar Sesión</span>';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Transporte - IUSA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 font-sans">
+
+    <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden border border-slate-200 my-4">
+        
+        <!-- ENCABEZADO AZUL INSTITUCIONAL CON LOGOTIPO EN LA ESQUINA SUPERIOR IZQUIERDA -->
+        <div class="bg-indigo-900 text-white p-5 flex items-center justify-between relative">
+            <img src="/static/Iusa-logotipo.jpg" 
+     onerror="this.style.display='none'; document.getElementById('logo-eval-fallback').classList.remove('hidden');" 
+     alt="Logo IUSA" 
+     class="h-10 w-auto object-contain rounded bg-white p-1 shadow-sm">
+<div id="logo-eval-fallback" class="hidden bg-red-600 text-white font-black px-2.5 py-1 rounded text-xs tracking-wider shadow">IUSA</div>
+            
+            <div class="text-right">
+                <h1 class="text-xl font-extrabold tracking-wide">Gestión de Transporte</h1>
+                <p class="text-[10px] font-bold text-indigo-200 tracking-widest uppercase mt-0.5">IUSA TRANSPORTES</p>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-5">
+            
+            <!-- TARJETA DE UNIDAD DETECTADA CON FOTO Y DATOS DEL OPERADOR -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2 relative flex items-center space-x-4">
+                <span id="badge-estatus" class="absolute top-3 right-3 bg-blue-100 text-blue-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                    Buscando...
+                </span>
+
+                <!-- FOTO DEL OPERADOR -->
+                <div id="contenedor-foto" class="flex-shrink-0">
+                    <div class="w-16 h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1">
+                        [ FOTO ]
+                    </div>
+                </div>
+
+                <!-- DATOS DEL OPERADOR Y UNIDAD -->
+                <div class="space-y-1 pr-12">
+                    <p class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">UNIDAD DETECTADA</p>
+                    <p class="text-slate-800 font-semibold">Número de Camión: <span id="num-camion" class="font-bold text-slate-900">--</span></p>
+                    <p class="text-slate-800 font-semibold">Nombre del Chofer: <span id="nombre-chofer" class="font-bold text-blue-900">Cargando...</span></p>
+                    <p class="text-slate-800 font-semibold">Credencial Chofer: <span id="credencial-chofer" class="font-mono font-bold text-slate-900">--</span></p>
+                    <p class="text-slate-800 font-semibold">Empresa: <span id="empresa-chofer" class="font-bold text-slate-700">--</span></p>
+                </div>
+            </div>
+
+            <!-- ALERTA DE MENSAJES -->
+            <div id="alerta-mensaje" class="hidden p-3 rounded-xl text-center text-xs font-bold shadow-sm"></div>
+
+            <form id="form-registro" onsubmit="enviarRegistro(event)" class="space-y-4">
+                
+                <!-- 1. CREDENCIAL DEL COLABORADOR -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-2">1. Credencial del Colaborador:</label>
+                    
+                    <button type="button" class="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow text-xs transition flex items-center justify-center space-x-2 mb-2">
+                        <span>📷 Escanear Código de Barras</span>
+                    </button>
+                    
+                    <p class="text-[11px] text-slate-400 mb-1">O escribe tu número de credencial manualmente:</p>
+                    <input type="text" id="credencial-usuario" required placeholder="Ej. 08001986" 
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                </div>
+
+                <!-- 2. PIN DE SEGURIDAD -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">2. PIN de Seguridad (4 dígitos):</label>
+                    <input type="password" id="pin-seguridad" maxlength="4" required placeholder="****" 
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-center font-bold tracking-widest focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                    <p class="text-[10px] text-slate-400 text-center mt-1">Si es tu primer uso, el PIN que ingreses se registrará como tu clave personal.</p>
+                </div>
+
+                <!-- 3. SELECCIÓN DE CATEGORÍA DE REGISTRO -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">3. Tipo de Registro:</label>
+                    <select id="categoria-registro" onchange="cambiarTipoRegistro()" required
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white">
+                        <option value="" disabled selected>-- Selecciona el tipo de registro --</option>
+                        <option value="puntuacion">1. Puntuación / Reseña</option>
+                        <option value="reporte">2. Reporte / Incidencia</option>
+                    </select>
+                </div>
+
+                <!-- OPCIÓN 1: SECCIÓN DE ESTRELLAS (Muestran vacías) -->
+                <div id="seccion-estrellas" class="hidden pt-2 border-t border-slate-100 text-center">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Puntuación del Servicio:</label>
+                    <div class="flex justify-center space-x-2 text-3xl cursor-pointer" id="estrellas-container">
+                        <span onclick="setCalificacion(1)" class="star text-slate-300 hover:text-amber-400 transition" data-value="1">★</span>
+                        <span onclick="setCalificacion(2)" class="star text-slate-300 hover:text-amber-400 transition" data-value="2">★</span>
+                        <span onclick="setCalificacion(3)" class="star text-slate-300 hover:text-amber-400 transition" data-value="3">★</span>
+                        <span onclick="setCalificacion(4)" class="star text-slate-300 hover:text-amber-400 transition" data-value="4">★</span>
+                        <span onclick="setCalificacion(5)" class="star text-slate-300 hover:text-amber-400 transition" data-value="5">★</span>
+                    </div>
+                    <p id="calificacion-texto" class="text-[11px] text-slate-400 font-semibold mt-1">Selecciona una estrella</p>
+                    <input type="hidden" id="calificacion-val" value="0">
+                </div>
+
+                <!-- OPCIÓN 2: MENÚ DESPLEGABLE CON LAS 8 OPCIONES DE INCIDENCIAS -->
+                <div id="seccion-incidencias" class="hidden pt-2 border-t border-slate-100">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Selecciona el Motivo de la Incidencia:</label>
+                    <select id="motivo-incidencia"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white">
+                        <option value="" disabled selected>-- Selecciona la incidencia correspondiente --</option>
+                        <option value="No hubo ruta">No hubo ruta</option>
+                        <option value="No hizo bien la ruta">No hizo bien la ruta</option>
+                        <option value="No cumplió con el horario de la ruta">No cumplió con el horario de la ruta</option>
+                        <option value="Camión en mal estado">Camión en mal estado</option>
+                        <option value="Terminal sin funcionar">Terminal sin funcionar</option>
+                        <option value="Mal trato del chofer">Mal trato del chofer</option>
+                        <option value="Chofer en estado inconveniente">Chofer en estado inconveniente</option>
+                        <option value="Chofer no respeta los lineamientos de transporte">Chofer no respeta los lineamientos de transporte</option>
+                    </select>
+                </div>
+
+                <!-- BOTÓN ENVIAR REGISTRO -->
+                <button type="submit" id="btn-enviar" 
+                        class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg text-sm transition mt-3">
+                    Enviar Registro
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://jjfcesrsexuxyamoghsx.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_tkHpyaqmhlm8HuQvcVwzPg_Q0hehaPF';
+        const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const params = new URLSearchParams(window.location.search);
+        let idCamionParam = params.get('id_camion') || '02';
+
+        let choferActual = null;
+        let calificacionSeleccionada = 0;
+
+        async function cargarDatosUnidad() {
+            const numLimpio = idCamionParam.replace(/\D/g, '');
+            const idTP = numLimpio ? `TP-${numLimpio.padStart(2, '0')}` : idCamionParam.toUpperCase();
+            
+            document.getElementById('num-camion').textContent = numLimpio || idCamionParam;
+
+            try {
+                const { data, error } = await clientSupabase.from('choferes_unidades').select('*');
+
+                if (!error && data) {
+                    const choferEncontrado = data.find(c => {
+                        if (!c.id_camion) return false;
+                        const idDB = String(c.id_camion).trim().toUpperCase();
+                        const numDB = idDB.replace(/\D/g, '');
+                        return idDB === idCamionParam.toUpperCase() || idDB === idTP || (numDB !== '' && numDB === numLimpio);
+                    });
+
+                    if (choferEncontrado) {
+                        choferActual = choferEncontrado;
+                        document.getElementById('nombre-chofer').textContent = choferEncontrado.nombre_chofer || 'Información no registrada';
+                        document.getElementById('credencial-chofer').textContent = choferEncontrado.credencial_chofer || 'N/A';
+                        document.getElementById('empresa-chofer').textContent = choferEncontrado.empresa || 'IUSA';
+                        document.getElementById('badge-estatus').textContent = 'Conectado';
+                        document.getElementById('badge-estatus').className = 'absolute top-3 right-3 bg-emerald-100 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
+
+                        if (choferEncontrado.credencial_chofer) {
+                            const fotoUrl = `/static/Fotos_Op/${String(choferEncontrado.credencial_chofer).trim()}.jpg`;
+                            document.getElementById('contenedor-foto').innerHTML = `
+    <img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-16 h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1\'>[ SIN FOTO ]</div>';" alt="Foto Operador" class="w-16 h-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+`;
+                        }
+                    } else {
+                        document.getElementById('nombre-chofer').textContent = 'Información no registrada';
+                        document.getElementById('credencial-chofer').textContent = '--';
+                        document.getElementById('empresa-chofer').textContent = '--';
+                        document.getElementById('badge-estatus').textContent = 'Sin Asignar';
+                        document.getElementById('badge-estatus').className = 'absolute top-3 right-3 bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
+                    }
+                }
+            } catch (err) {
+                console.error("Error consultando operador:", err);
+            }
+        }
+
+        function cambiarTipoRegistro() {
+            const categoria = document.getElementById('categoria-registro').value;
+            const secEstrellas = document.getElementById('seccion-estrellas');
+            const secIncidencias = document.getElementById('seccion-incidencias');
+            const selectMotivo = document.getElementById('motivo-incidencia');
+
+            if (categoria === 'puntuacion') {
+                secEstrellas.classList.remove('hidden');
+                secIncidencias.classList.add('hidden');
+                selectMotivo.removeAttribute('required');
+            } else if (categoria === 'reporte') {
+                secIncidencias.classList.remove('hidden');
+                secEstrellas.classList.add('hidden');
+                selectMotivo.setAttribute('required', 'required');
+            }
+        }
+
+        function setCalificacion(val) {
+            calificacionSeleccionada = val;
+            document.getElementById('calificacion-val').value = val;
+            
+            const estrellas = document.querySelectorAll('#estrellas-container .star');
+            const textos = ['', 'Pésimo 😡', 'Malo 🙁', 'Regular 😐', 'Bueno 🙂', 'Excelente 😃'];
+
+            estrellas.forEach((est, idx) => {
+                if (idx < val) {
+                    est.classList.remove('text-slate-300');
+                    est.classList.add('text-amber-400');
+                } else {
+                    est.classList.remove('text-amber-400');
+                    est.classList.add('text-slate-300');
+                }
+            });
+
+            document.getElementById('calificacion-texto').textContent = textos[val];
+            document.getElementById('calificacion-texto').className = 'text-[11px] font-bold text-amber-600 mt-1';
+        }
+
+        async function enviarRegistro(e) {
+            e.preventDefault();
+
+            const btn = document.getElementById('btn-enviar');
+            const alerta = document.getElementById('alerta-mensaje');
+            const credencialUsuario = document.getElementById('credencial-usuario').value;
+            const pinSeguridad = document.getElementById('pin-seguridad').value;
+            const categoria = document.getElementById('categoria-registro').value;
+
+            let tipoIncidenciaFinal = '';
+            let calificacionFinal = null;
+
+            if (categoria === 'puntuacion') {
+                if (calificacionSeleccionada === 0) {
+                    alerta.textContent = '⚠️ Selecciona la puntuación con las estrellas.';
+                    alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-amber-100 text-amber-800 shadow-sm';
+                    alerta.classList.remove('hidden');
+                    return;
+                }
+                tipoIncidenciaFinal = 'Reseña / Evaluación';
+                calificacionFinal = calificacionSeleccionada;
+            } else if (categoria === 'reporte') {
+                tipoIncidenciaFinal = document.getElementById('motivo-incidencia').value;
+                calificacionFinal = null;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                const { error } = await clientSupabase
+                    .from('reportes_recibidos')
+                    .insert([
+                        {
+                            id_camion: document.getElementById('num-camion').textContent,
+                            nombre_chofer: choferActual ? choferActual.nombre_chofer : 'DESCONOCIDO',
+                            credencial_chofer: credencialUsuario,
+                            pin_seguridad: pinSeguridad,
+                            calificacion: calificacionFinal,
+                            tipo_incidencia: tipoIncidenciaFinal,
+                            estatus: 'Recibido'
+                        }
+                    ]);
+
+                if (error) throw error;
+
+                alerta.textContent = '✅ ¡Registro enviado con éxito!';
+                alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm';
+                alerta.classList.remove('hidden');
+
+                document.getElementById('form-registro').reset();
+                setCalificacion(0);
+                document.getElementById('seccion-estrellas').classList.add('hidden');
+                document.getElementById('seccion-incidencias').classList.add('hidden');
+
+            } catch (err) {
+                console.error("Error guardando registro:", err);
+                alerta.textContent = '❌ Error al enviar el registro. Revisa la conexión.';
+                alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-red-100 text-red-800 shadow-sm';
+                alerta.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Enviar Registro';
+            }
+        }
+
+        cargarDatosUnidad();
+    </script>
+</body>
+</html>
