@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @media print {
             @page {
@@ -55,78 +54,74 @@
         }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 font-sans flex flex-col justify-between">
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
 
-    <!-- BARRA DE NAVEGACIÓN RESPONSIVA -->
+    <!-- BARRA DE NAVEGACIÓN UNIFICADA -->
     <nav class="bg-slate-900 text-white shadow-lg border-b border-slate-800 no-print">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center py-3 sm:py-0 sm:h-16 gap-3 sm:gap-0">
-            <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
-                <div class="flex items-center space-x-3">
-                    <img src="/static/Iusa-logotipo.jpg" 
-                         onerror="this.style.display='none'; document.getElementById('logo-fallback').classList.remove('hidden');" 
-                         alt="Logo IUSA" 
-                         class="h-8 sm:h-9 w-auto object-contain rounded bg-white p-1 shadow-sm">
-                    <div id="logo-fallback" class="hidden bg-red-600 text-white font-extrabold px-2 py-1 rounded text-xs tracking-wider">IUSA</div>
-                    <span class="font-bold text-sm sm:text-base tracking-wide text-slate-100">Generador QR IUSA</span>
-                </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <div class="flex items-center space-x-3">
+                <img src="/static/Iusa-logotipo.jpg" 
+                     onerror="this.style.display='none'; document.getElementById('logo-fallback').classList.remove('hidden');" 
+                     alt="Logo IUSA" 
+                     class="h-9 w-auto object-contain rounded bg-white p-1 shadow-sm">
+                <!-- // <div id="logo-fallback" class="hidden bg-red-600 text-white font-extrabold px-2.5 py-1 rounded text-sm tracking-wider">IUSA</div> -->
+                <span class="font-bold text-lg tracking-wide text-slate-100">Sistema generador de reportes IUSA</span>
             </div>
-            <div class="flex items-center flex-wrap justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium">
-                <a href="/" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📊 <span class="hidden md:inline">Reportes</span></a>
-                <a href="/reportes" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📝 <span class="hidden md:inline">Evaluación</span></a>
-                <a href="/qr_generator" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">📷 <span class="hidden md:inline">Generador QR</span></a>
-                
-                <!-- BOTÓN CERRAR SESIÓN -->
-                <button onclick="cerrarSesion()" class="ml-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition text-xs shadow flex items-center space-x-1">
-                    <i class="fa-solid fa-lock text-[10px]"></i>
-                    <span class="hidden sm:inline">Cerrar Sesión</span>
-                </button>
-            </div>
+        <div class="flex items-center space-x-2 text-sm font-medium">
+            <a href="/" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📊 Reportes Operativos</a>
+            <a href="/reportes" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📝 Evaluación Servicio</a>
+            <a href="/qr_generator" class="px-3.5 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">📷 Generador QR</a>
+            
+            <!-- BOTÓN CERRAR SESIÓN -->
+            <button onclick="cerrarSesion()" class="ml-3 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition text-xs shadow flex items-center space-x-1">
+                <span>🔒 Cerrar Sesión</span>
+            </button>
         </div>
-    </nav>
+    </div>
+</nav>
 
-    <main class="max-w-6xl mx-auto px-4 py-8 flex-grow w-full">
+    <main class="max-w-6xl mx-auto px-4 py-8">
         
         <div class="mb-6 no-print">
-            <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Generador de Identificaciones y QRs de Operadores</h1>
-            <p class="text-xs sm:text-sm text-slate-500">Genera e imprime la ficha oficial institucional (formato horizontal con foto lateral grande).</p>
+            <h1 class="text-2xl font-bold text-slate-900">Generador de Identificaciones y QRs de Operadores</h1>
+            <p class="text-sm text-slate-500">Genera e imprime la ficha oficial institucional (formato horizontal con foto lateral grande).</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             <!-- PANEL DE CONTROL -->
-            <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 no-print">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 no-print">
                 <h2 class="text-base font-bold text-slate-800 border-b pb-2">Selección de Unidades</h2>
                 
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Unidad o Rango de Unidades:</label>
                     <input type="text" id="input-unidades" value="" placeholder="Ej. TP-12  ó  12  ó  01-04" 
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold">
-                    <p class="text-[11px] text-slate-400 mt-1.5 leading-tight space-y-0.5">
+                    <p class="text-[11px] text-slate-400 mt-1.5 leading-tight">
                         • Único: <code class="text-slate-700">TP-12</code> o <code class="text-slate-700">12</code><br>
                         • Rango: <code class="text-slate-700">01-04</code><br>
                         • Varios: <code class="text-slate-700">01, 03, TP-05</code>
                     </p>
                 </div>
 
-                <button onclick="procesarYGenerarQR()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow text-sm transition flex items-center justify-center space-x-2">
-                    <i class="fa-solid fa-rotate"></i>
-                    <span>Generar Identificaciones QR</span>
+                <button onclick="procesarYGenerarQR()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow text-sm transition">
+                    🔄 Generar Identificaciones QR
                 </button>
 
                 <hr class="my-2">
 
                 <button onclick="window.print()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow text-sm transition flex items-center justify-center space-x-2">
-                    <i class="fa-solid fa-print"></i>
-                    <span>Imprimir Ficha Oficial</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H7a2 2 0 00-2 2v4h10z"></path></svg>
+                    <span>🖨️ Imprimir Ficha Oficial</span>
                 </button>
             </div>
 
             <!-- CONTENEDOR DE HOJA IMPRESA -->
             <div class="md:col-span-2">
                 <div id="printable-grid" class="space-y-6">
-                    <div id="empty-state" class="p-8 sm:p-12 text-center border-2 border-dashed border-slate-300 rounded-2xl bg-white text-slate-400">
-                        <i class="fa-solid fa-file-lines text-4xl block mb-2 text-slate-300"></i>
-                        <p class="font-medium text-xs sm:text-sm">Ingresa la unidad o rango deseado a la izquierda y haz clic en <strong>"Generar Identificaciones QR"</strong>.</p>
+                    <div id="empty-state" class="p-12 text-center border-2 border-dashed border-slate-300 rounded-2xl bg-white text-slate-400">
+                        <span class="text-4xl block mb-2">📄</span>
+                        <p class="font-medium text-sm">Ingresa la unidad o rango deseado a la izquierda y haz clic en <strong>"Generar Identificaciones QR"</strong>.</p>
                     </div>
                 </div>
             </div>
@@ -135,26 +130,22 @@
 
     </main>
 
-    <!-- Footer -->
-    <footer class="text-center py-6 text-xs text-slate-400 no-print">
-        <p>Sistema generador de reportes IUSA &copy; 2026</p>
-    </footer>
-
     <script>
-        const sessionData = localStorage.getItem('iusa_session');
-        if (!sessionData) {
-            window.location.href = '/login';
-        }
+// VERIFICACIÓN DE SEGURIDAD (Agregado al inicio de script)
+const sessionData = localStorage.getItem('iusa_session');
+if (!sessionData) {
+    window.location.href = '/login';
+}
 
+// Función para Cerrar Sesión (para agregar al menú superior)
+async function cerrarSesion() {
+    localStorage.removeItem('iusa_session');
+    await clientSupabase.auth.signOut();
+    window.location.href = '/login';
+}
         const SUPABASE_URL = 'https://jjfcesrsexuxyamoghsx.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_tkHpyaqmhlm8HuQvcVwzPg_Q0hehaPF';
         const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        async function cerrarSesion() {
-            localStorage.removeItem('iusa_session');
-            await clientSupabase.auth.signOut();
-            window.location.href = '/login';
-        }
 
         const dominioActual = window.location.origin;
 
@@ -192,13 +183,13 @@
 
             if (unidades.length === 0) {
                 gridContainer.innerHTML = `
-                    <div class="p-8 text-center border-2 border-dashed border-amber-300 rounded-2xl bg-amber-50 text-amber-700 text-sm font-medium">
-                        <p>⚠️ Por favor escribe una unidad o rango (Ej. TP-12, 12 o 01-04) antes de generar.</p>
+                    <div class="p-12 text-center border-2 border-dashed border-amber-300 rounded-2xl bg-amber-50 text-amber-700">
+                        <p class="font-bold text-sm">⚠️ Por favor escribe una unidad o rango (Ej. TP-12, 12 o 01-04) antes de generar.</p>
                     </div>`;
                 return;
             }
 
-            gridContainer.innerHTML = '<div class="p-8 text-center font-bold text-slate-500 text-sm"><i class="fa-solid fa-circle-notch animate-spin text-blue-600 mr-2"></i> Cargando datos desde la base de datos...</div>';
+            gridContainer.innerHTML = '<div class="p-8 text-center font-bold text-slate-500">Cargando datos desde la base de datos...</div>';
 
             let choferesData = [];
             try {
@@ -231,60 +222,59 @@
                     credencial_chofer: 'N/A'
                 }];
 
-                // Generar una tarjeta independiente por cada chofer encontrado en la unidad
+                // Generar una tarjeta por cada chofer encontrado
                 listaAMostrar.forEach((chofer, idxSub) => {
                     const nombreOperador = chofer.nombre_chofer || 'OPERADOR DE UNIDAD';
-                    const credencialOperador = String(chofer.credencial_chofer || 'N/A').trim();
+                    const credencialOperador = chofer.credencial_chofer || 'N/A';
                     let fotoUrl = null;
 
-                    if (credencialOperador !== 'N/A') {
-                        fotoUrl = `/static/Fotos_Op/${credencialOperador}.jpg`;
+                    if (chofer.credencial_chofer) {
+                        fotoUrl = `/static/Fotos_Op/${String(chofer.credencial_chofer).trim()}.jpg`;
                     }
 
                     const cardId = `qr-card-${index}-${idxSub}`;
-                    // URL robusta apuntando al dominio actual con HTTPS para habilitar la cámara en móviles
-                    const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}&credencial=${encodeURIComponent(credencialOperador)}`;
+                    const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}`;
 
                     const fotoHtml = fotoUrl 
-                        ? `<img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-48 h-60 sm:w-64 sm:h-80 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-slate-400 text-sm font-bold text-center p-2\\'>[ SIN FOTO ]</div>';" alt="Foto ${nombreOperador}" class="w-48 h-60 sm:w-64 sm:h-80 object-cover rounded-2xl border-4 border-slate-300 shadow-md">`
-                        : `<div class="w-48 h-60 sm:w-64 sm:h-80 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-slate-400 text-sm font-bold text-center p-2">[ SIN FOTO ]</div>`;
+                        ? `<img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-64 h-80 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-slate-400 text-sm font-bold text-center p-2\\'>[ SIN FOTO ]</div>';" alt="Foto ${nombreOperador}" class="w-64 h-80 object-cover rounded-2xl border-4 border-slate-300 shadow-md">`
+                        : `<div class="w-64 h-80 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-slate-400 text-sm font-bold text-center p-2">[ SIN FOTO ]</div>`;
 
                     htmlAcumulado += `
-                        <div class="page-card bg-white rounded-2xl border-2 border-slate-300 shadow-md flex flex-col justify-between mx-auto my-4 w-full p-4 sm:p-6">
+                        <div class="page-card bg-white rounded-2xl border-2 border-slate-300 shadow-md flex flex-col justify-between mx-auto my-4 w-full">
                             
                             <div class="w-full border-b-4 border-red-600 pb-3 flex justify-between items-center">
                                 <div class="flex items-center space-x-3">
-                                    <img src="/static/Iusa-logotipo.jpg" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'bg-red-600 text-white font-black px-4 py-2 rounded-lg text-xl tracking-widest uppercase shadow\\'>IUSA</div>';" alt="Logo IUSA" class="h-10 sm:h-12 object-contain">
+                                    <img src="/static/Iusa-logotipo.jpg" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'bg-red-600 text-white font-black px-4 py-2 rounded-lg text-xl tracking-widest uppercase shadow\\'>IUSA</div>';" alt="Logo IUSA" class="h-12 object-contain">
                                 </div>
                                 <div class="text-right">
-                                    <h3 class="font-black text-slate-900 text-base sm:text-xl tracking-tight">TRANSPORTE DE PERSONAL</h3>
-                                    <p class="text-[10px] sm:text-xs text-slate-500 font-extrabold uppercase tracking-widest">FICHA OFICIAL DE OPERADOR</p>
+                                    <h3 class="font-black text-slate-900 text-xl tracking-tight">TRANSPORTE DE PERSONAL</h3>
+                                    <p class="text-xs text-slate-500 font-extrabold uppercase tracking-widest">FICHA OFICIAL DE OPERADOR</p>
                                 </div>
                             </div>
 
-                            <div class="w-full grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 items-center my-4 bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200">
-                                <div class="md:col-span-5 flex justify-center items-center">
+                            <div class="w-full grid grid-cols-12 gap-6 items-center my-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                                <div class="col-span-5 flex justify-center items-center">
                                     ${fotoHtml}
                                 </div>
 
-                                <div class="md:col-span-7 text-left space-y-3 sm:space-y-4 pl-0 md:pl-2">
+                                <div class="col-span-7 text-left space-y-4 pl-2">
                                     <div>
-                                        <span class="bg-red-100 text-red-700 text-[10px] sm:text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                                        <span class="bg-red-100 text-red-700 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
                                             OPERADOR ASIGNADO
                                         </span>
-                                        <h2 class="font-black text-slate-900 text-2xl sm:text-3xl uppercase leading-tight tracking-wide mt-2">
+                                        <h2 class="font-black text-slate-900 text-3xl uppercase leading-tight tracking-wide mt-2">
                                             ${nombreOperador}
                                         </h2>
                                     </div>
 
-                                    <div class="space-y-1.5 sm:space-y-2 border-t border-slate-200 pt-3">
-                                        <p class="text-slate-600 text-sm sm:text-base">
+                                    <div class="space-y-2 border-t border-slate-200 pt-3">
+                                        <p class="text-slate-600 text-base">
                                             <strong class="text-slate-800">Número de Credencial:</strong><br>
-                                            <span class="font-mono text-slate-900 font-black text-xl sm:text-2xl">${credencialOperador}</span>
+                                            <span class="font-mono text-slate-900 font-black text-2xl">${credencialOperador}</span>
                                         </p>
-                                        <p class="text-slate-600 text-sm sm:text-base">
+                                        <p class="text-slate-600 text-base">
                                             <strong class="text-slate-800">Unidad Asignada:</strong><br>
-                                            <span class="font-extrabold text-blue-900 text-2xl sm:text-3xl">${idTP}</span>
+                                            <span class="font-extrabold text-blue-900 text-3xl">${idTP}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -295,14 +285,14 @@
                             </div>
 
                             <div class="w-full text-center">
-                                <div class="bg-slate-900 text-white py-2.5 sm:py-3 rounded-xl font-black text-xl sm:text-3xl tracking-wider shadow-md mb-2">
+                                <div class="bg-slate-900 text-white py-3 rounded-xl font-black text-3xl tracking-wider shadow-md mb-2">
                                     UNIDAD ${idTP}
                                 </div>
-                                <p class="text-[11px] sm:text-xs text-slate-600 font-semibold px-4">Escanea este código QR con la cámara de tu celular para calificar el servicio o reportar alguna incidencia.</p>
+                                <p class="text-xs text-slate-600 font-semibold px-6">Escanea este código QR con la cámara de tu celular para calificar el servicio o reportar alguna incidencia.</p>
                             </div>
 
-                            <div class="w-full border-t border-slate-200 pt-2 text-center text-[10px] sm:text-xs text-slate-400 font-medium">
-                                Sistema de Control Logístico y Evaluaciones &bull; IUSA Transportes
+                            <div class="w-full border-t border-slate-200 pt-2 text-center text-xs text-slate-400 font-medium">
+                                Sistema de Control Logístico y Evaluaciones • IUSA Transportes
                             </div>
                         </div>
                     `;
@@ -311,19 +301,18 @@
 
             gridContainer.innerHTML = htmlAcumulado;
 
-            // Generar códigos QR para todas las tarjetas renderizadas
+            // Generar códigos QR para todas las tarjetas
             unidades.forEach((uni, index) => {
                 const numLimpio = uni.replace(/\D/g, '');
                 const idTP = numLimpio ? `TP-${numLimpio.padStart(2, '0')}` : uni.toUpperCase();
+                const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}`;
 
                 const elementosQr = document.querySelectorAll(`[id^="qr-card-${index}-"]`);
                 elementosQr.forEach(elem => {
-                    // Extraer credencial específica desde el ID o la estructura si es necesario, 
-                    // o reutilizar la URL con el parámetro de unidad correspondiente
                     new QRCode(elem, {
-                        text: `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}`,
-                        width: 200,
-                        height: 200,
+                        text: urlFinal,
+                        width: 230,
+                        height: 230,
                         colorDark : "#0f172a",
                         colorLight : "#ffffff",
                         correctLevel : QRCode.CorrectLevel.H
