@@ -6,6 +6,7 @@
     <title>Gestión de Transporte - IUSA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-slate-100 min-h-screen flex items-center justify-center p-3 sm:p-4 font-sans">
@@ -52,14 +53,9 @@
                 </div>
             </div>
 
-            <!-- CONTENEDOR OCULTO DE LA CÁMARA -->
+            <!-- CONTENEDOR DE LA CÁMARA CON LIBRERÍA DE ESCANEO -->
             <div id="contenedor-camara" class="hidden bg-slate-900 p-4 rounded-2xl text-center space-y-3">
-                <div class="relative w-full h-48 bg-black rounded-xl overflow-hidden flex items-center justify-center">
-                    <video id="video-camara" autoplay playsinline class="w-full h-full object-cover"></video>
-                    <div class="absolute inset-0 border-2 border-emerald-500/50 pointer-events-none flex items-center justify-center">
-                        <div class="w-3/4 h-12 border-2 border-dashed border-emerald-400 rounded-lg animate-pulse"></div>
-                    </div>
-                </div>
+                <div id="reader" class="w-full rounded-xl overflow-hidden bg-black"></div>
                 <div class="flex justify-center space-x-2">
                     <button type="button" onclick="cerrarCamara()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition">
                         ✕ Cerrar Cámara
@@ -91,7 +87,7 @@
                     <label class="block text-xs font-bold text-slate-700 mb-1">2. PIN de Seguridad (4 dígitos):</label>
                     <input type="password" id="pin-seguridad" maxlength="4" required placeholder="****" 
                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-center font-bold tracking-widest focus:ring-2 focus:ring-blue-600 focus:outline-none">
-                    <p class="text-[10px] text-slate-400 text-center mt-1">Si es tu primer uso, el PIN que ingreses se registrará como tu clave personal.</p>
+                    <p class="text-[10px] text-slate-400 text-center mt-1">Ingresa tu PIN personal registrado.</p>
                 </div>
 
                 <!-- 3. SELECCIÓN DE CATEGORÍA DE REGISTRO -->
@@ -156,7 +152,7 @@
 
         let choferActual = null;
         let calificacionSeleccionada = 0;
-        let mediaStream = null;
+        let html5QrCode = null;
 
         async function cargarDatosUnidad() {
             const numLimpio = idCamionParam.replace(/\D/g, '');
@@ -202,28 +198,34 @@
             }
         }
 
-        async function iniciarEscaneoCamara() {
+        // ESCÁNER DE CÁMARA REAL CON HTML5-QRCODE
+        function iniciarEscaneoCamara() {
             const contenedorCamara = document.getElementById('contenedor-camara');
-            const videoElem = document.getElementById('video-camara');
-            
             contenedorCamara.classList.remove('hidden');
 
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
-                });
-                videoElem.srcObject = mediaStream;
-            } catch (err) {
-                console.error("Error al acceder a la cámara:", err);
-                alert("No se pudo acceder a la cámara. Asegúrate de otorgar los permisos en tu navegador o escribe tu credencial manualmente.");
-                contenedorCamara.classList.add('hidden');
-            }
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 150 } },
+                (decodedText) => {
+                    document.getElementById('credencial-usuario').value = decodedText.trim();
+                    cerrarCamara();
+                },
+                (errorMessage) => {
+                    // Errores de escaneo en tiempo real se ignoran para mantener la fluidez
+                }
+            ).catch(err => {
+                console.error("Error al iniciar cámara:", err);
+                alert("No se pudo iniciar el escáner de cámara. Ingresa tu credencial manualmente.");
+                cerrarCamara();
+            });
         }
 
         function cerrarCamara() {
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(err => console.error(err));
             }
             document.getElementById('contenedor-camara').classList.add('hidden');
         }
@@ -285,7 +287,7 @@
                     alerta.classList.remove('hidden');
                     return;
                 }
-                tipoIncidenciaFinal = 'Reseña / Evaluación';
+                tipoIncidenciaFinal = 'Calificación (Estrellas)';
                 calificacionFinal = calificacionSeleccionada;
             } else if (categoria === 'reporte') {
                 tipoIncidenciaFinal = document.getElementById('motivo-incidencia').value;
@@ -293,24 +295,40 @@
             }
 
             btn.disabled = true;
-            btn.textContent = 'Enviando...';
+            btn.textContent = 'Verificando y enviando...';
 
             try {
-                const { error } = await clientSupabase
+                // 1. VALIDAR CONTRA LA TABLA credenciales_validas DE SUPABASE
+                const { data: credencialValida, error: errorCredencial } = await clientSupabase
+                    .from('credenciales_validas')
+                    .select('*')
+                    .eq('numero_credencial', credencialUsuario)
+                    .single();
+
+                if (errorCredencial || !credencialValida) {
+                    throw new Error('La credencial ingresada no se encuentra registrada en el sistema.');
+                }
+
+                if (String(credencialValida.pin_seguridad).trim() !== pinSeguridad) {
+                    throw new Error('El PIN de seguridad es incorrecto.');
+                }
+
+                // 2. INSERTAR EL REPORTE EXITOSAMENTE EN reportes_recibidos
+                const { error: errorInsert } = await clientSupabase
                     .from('reportes_recibidos')
                     .insert([
                         {
+                            folio_reporte: 'FOLIO-' + Math.floor(100000 + Math.random() * 900000),
+                            fecha_hora: new Date().toISOString(),
                             id_camion: document.getElementById('num-camion').textContent,
-                            nombre_chofer: choferActual ? choferActual.nombre_chofer : 'DESCONOCIDO',
-                            credencial_chofer: credencialUsuario,
-                            pin_seguridad: pinSeguridad,
-                            calificacion: calificacionFinal,
-                            tipo_incidencia: tipoIncidenciaFinal,
-                            estatus: 'Recibido'
+                            credencial_emisor: credencialUsuario,
+                            tipo_envio: tipoIncidenciaFinal,
+                            puntuacion: calificacionFinal,
+                            comentario: categoria === 'reporte' ? tipoIncidenciaFinal : 'Calificación de servicio registrada con estrellas'
                         }
                     ]);
 
-                if (error) throw error;
+                if (errorInsert) throw errorInsert;
 
                 alerta.textContent = '✅ ¡Registro enviado con éxito!';
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm';
@@ -323,8 +341,8 @@
                 cerrarCamara();
 
             } catch (err) {
-                console.error("Error guardando registro:", err);
-                alerta.textContent = '❌ Error al enviar el registro. Revisa que la credencial y el PIN sean correctos.';
+                console.error("Error en validación o envío:", err);
+                alerta.textContent = `❌ ${err.message || 'Error al enviar el registro. Revisa los datos.'}`;
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-red-100 text-red-800 shadow-sm';
                 alerta.classList.remove('hidden');
             } finally {
