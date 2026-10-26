@@ -67,13 +67,13 @@
                          alt="Logo IUSA" 
                          class="h-8 sm:h-9 w-auto object-contain rounded bg-white p-1 shadow-sm">
                     <div id="logo-fallback" class="hidden bg-red-600 text-white font-extrabold px-2 py-1 rounded text-xs tracking-wider">IUSA</div>
-                    <span class="font-bold text-xs sm:text-sm tracking-wide text-slate-100">Sistema generador de reportes IUSA</span>
+                    <span class="font-bold text-xs sm:text-sm tracking-wide text-slate-100">Generador QR IUSA</span>
                 </div>
             </div>
             <div class="flex items-center flex-wrap justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium w-full md:w-auto">
-                <a href="/" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Reportes Operativos</a>
-                <a href="/reportes" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Evaluación Servicio</a>
-                <a href="/qr_generator" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">QR</a>
+                <a href="/" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📊 Reportes</a>
+                <a href="/reportes" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📝 Evaluación</a>
+                <a href="/qr_generator" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">📷 QR</a>
                 
                 <!-- BOTÓN CERRAR SESIÓN -->
                 <button onclick="cerrarSesion()" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition text-xs shadow flex items-center space-x-1">
@@ -88,7 +88,7 @@
         
         <div class="mb-6 no-print">
             <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Generador de Identificaciones y QRs de Operadores</h1>
-            <p class="text-xs sm:text-sm text-slate-500">Genera e imprime la ficha oficial institucional</p>
+            <p class="text-xs sm:text-sm text-slate-500">Genera e imprime la ficha oficial institucional (formato horizontal con foto lateral grande).</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -211,6 +211,7 @@
             }
 
             let htmlAcumulado = '';
+            let listaGeneracionQR = []; // Para almacenar los datos de renderizado de QR
 
             for (let index = 0; index < unidades.length; index++) {
                 const uni = unidades[index];
@@ -234,12 +235,20 @@
                     const credencialOperador = chofer.credencial_chofer || 'N/A';
                     let fotoUrl = null;
 
-                    if (chofer.credencial_chofer) {
+                    if (chofer.credencial_chofer && chofer.credencial_chofer !== 'N/A') {
                         fotoUrl = `/static/Fotos_Op/${String(chofer.credencial_chofer).trim()}.jpg`;
                     }
 
                     const cardId = `qr-card-${index}-${idxSub}`;
-                    const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}`;
+                    
+                    // Enlace único con unidad y credencial específica del operador
+                    const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}&credencial=${encodeURIComponent(credencialOperador)}`;
+
+                    // Guardamos para generar el QR después de pintar el HTML
+                    listaGeneracionQR.push({
+                        elementId: cardId,
+                        url: urlFinal
+                    });
 
                     const fotoHtml = fotoUrl 
                         ? `<img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-48 h-60 sm:w-64 sm:h-80 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-slate-400 text-sm font-bold text-center p-2\\'>[ SIN FOTO ]</div>';" alt="Foto ${nombreOperador}" class="w-48 h-60 sm:w-64 sm:h-80 object-cover rounded-2xl border-4 border-slate-300 shadow-md">`
@@ -305,26 +314,22 @@
                 });
             }
 
+            // Insertamos todo el HTML generado en la página
             gridContainer.innerHTML = htmlAcumulado;
 
-            unidades.forEach((uni, index) => {
-                const numLimpio = uni.replace(/\D/g, '');
-                const idTP = numLimpio ? `TP-${numLimpio.padStart(2, '0')}` : uni.toUpperCase();
-                //const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}`;
-// Ahora (con la credencial específica del operador integrada):
-const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}&credencial=${encodeURIComponent(credencialOperador)}`;
-
-                const elementosQr = document.querySelectorAll(`[id^="qr-card-${index}-"]`);
-                elementosQr.forEach(elem => {
-                    new QRCode(elem, {
-                        text: urlFinal,
+            // Renderizamos los códigos QR de forma limpia usando el arreglo recolectado
+            listaGeneracionQR.forEach(item => {
+                const contenedorQR = document.getElementById(item.elementId);
+                if (contenedorQR) {
+                    new QRCode(contenedorQR, {
+                        text: item.url,
                         width: 200,
                         height: 200,
                         colorDark : "#0f172a",
                         colorLight : "#ffffff",
                         correctLevel : QRCode.CorrectLevel.H
                     });
-                });
+                }
             });
         }
     </script>
