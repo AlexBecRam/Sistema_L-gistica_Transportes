@@ -297,7 +297,7 @@
 
             try {
                 // INSERCIÓN DIRECTA Y SEGURA A LA BASE DE DATOS
-                const { error: errorInsert } = await clientSupabase
+                const { data, error: errorInsert } = await clientSupabase
                     .from('reportes_recibidos')
                     .insert([
                         {
@@ -325,8 +325,11 @@
                 cerrarCamara();
 
             } catch (err) {
-                console.error("Error capturado:", err);
-                alerta.textContent = `❌ Error al procesar la solicitud: ${err.message || 'Desconocido'}`;
+                console.error("Error detallado de Supabase:", err);
+                // Mostramos el mensaje exacto y detalles que arroja Supabase
+                const detalleError = err.message || JSON.stringify(err);
+                const hintError = err.details ? ` (${err.details})` : '';
+                alerta.textContent = `❌ Error: ${detalleError}${hintError}`;
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-red-100 text-red-800 shadow-sm border border-red-200';
                 alerta.classList.remove('hidden');
             } finally {
