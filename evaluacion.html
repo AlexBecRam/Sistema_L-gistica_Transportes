@@ -149,6 +149,7 @@
 
         const params = new URLSearchParams(window.location.search);
         let idCamionParam = params.get('id_camion') || '02';
+        let credencialParam = params.get('credencial'); // Capturamos la credencial específica del QR
 
         let choferActual = null;
         let calificacionSeleccionada = 0;
@@ -168,7 +169,15 @@
                         if (!c.id_camion) return false;
                         const idDB = String(c.id_camion).trim().toUpperCase();
                         const numDB = idDB.replace(/\D/g, '');
-                        return idDB === idCamionParam.toUpperCase() || idDB === idTP || (numDB !== '' && numDB === numLimpio);
+                        const coincideCamion = idDB === idCamionParam.toUpperCase() || idDB === idTP || (numDB !== '' && numDB === numLimpio);
+                        
+                        // Si el QR trae una credencial específica, filtramos exactamente por unidad Y operador
+                        if (credencialParam) {
+                            const credDB = String(c.credencial_chofer || '').trim();
+                            return coincideCamion && credDB === credencialParam.trim();
+                        }
+                        
+                        return coincideCamion;
                     });
 
                     if (choferEncontrado) {
@@ -186,10 +195,10 @@
                             `;
                         }
                     } else {
-                        document.getElementById('nombre-chofer').textContent = 'Información no registrada';
-                        document.getElementById('credencial-chofer').textContent = '--';
+                        document.getElementById('nombre-chofer').textContent = 'Operador no especificado para esta ficha';
+                        document.getElementById('credencial-chofer').textContent = credencialParam || '--';
                         document.getElementById('empresa-chofer').textContent = '--';
-                        document.getElementById('badge-estatus').textContent = 'Sin Asignar';
+                        document.getElementById('badge-estatus').textContent = 'Unidad Compartida';
                         document.getElementById('badge-estatus').className = 'self-end sm:absolute sm:top-3 sm:right-3 bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
                     }
                 }

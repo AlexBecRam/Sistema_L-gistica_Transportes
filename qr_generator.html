@@ -310,7 +310,9 @@
             unidades.forEach((uni, index) => {
                 const numLimpio = uni.replace(/\D/g, '');
                 const idTP = numLimpio ? `TP-${numLimpio.padStart(2, '0')}` : uni.toUpperCase();
-                const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}`;
+                //const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}`;
+// Ahora (con la credencial específica del operador integrada):
+const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}&credencial=${encodeURIComponent(credencialOperador)}`;
 
                 const elementosQr = document.querySelectorAll(`[id^="qr-card-${index}-"]`);
                 elementosQr.forEach(elem => {
