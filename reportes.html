@@ -130,17 +130,17 @@
         const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let reportesGlobal = [];
-        let usuariosMap = {}; // Diccionario para relacionar credencial con nombre del emisor
+        let usuariosMap = {}; // Diccionario para relacionar credencial con nombre_usuario
 
         async function cargarReportes() {
             try {
-                // 1. Cargar catálogo de usuarios (credenciales_validas) para extraer nombres
+                // 1. Cargar catálogo de usuarios (credenciales_validas) extrayendo nombre_usuario
                 const { data: usuariosData } = await clientSupabase.from('credenciales_validas').select('*');
                 if (usuariosData) {
                     usuariosData.forEach(u => {
                         const cred = String(u.numero_credencial || '').trim();
-                        // Ajusta 'nombre' o 'nombre_completo' según el campo exacto de tu tabla credenciales_validas
-                        usuariosMap[cred] = u.nombre || u.nombre_completo || u.nombre_empleado || 'Colaborador IUSA';
+                        // Extracción directa de la columna nombre_usuario de Supabase
+                        usuariosMap[cred] = u.nombre_usuario || 'Colaborador IUSA';
                     });
                 }
 
@@ -167,7 +167,6 @@
             const total = data.length;
             document.getElementById('stat-total').textContent = total;
 
-            // Calcular promedio de puntuación (filtrando los que tienen puntuación válida mayor a 0)
             const conPuntuacion = data.filter(r => r.puntuacion && r.puntuacion > 0);
             if (conPuntuacion.length > 0) {
                 const suma = conPuntuacion.reduce((acc, curr) => acc + Number(curr.puntuacion), 0);
@@ -176,7 +175,6 @@
                 document.getElementById('stat-promedio').textContent = '0.0';
             }
 
-            // Conteo de Reporte / Incidencia (todo lo que no sea calificación por estrellas)
             const totalReportes = data.filter(r => {
                 const tipo = String(r.tipo_envio || '').toLowerCase();
                 return tipo.includes('reporte') || tipo.includes('incidencia') || !tipo.includes('calificación');
@@ -197,18 +195,16 @@
             let html = '';
             data.forEach(r => {
                 const credencial = String(r.credencial_emisor || '').trim();
+                // Obtenemos el nombre exacto usando la columna nombre_usuario de la tabla credenciales_validas
                 const nombreEmisor = usuariosMap[credencial] || 'Colaborador IUSA';
                 
-                // Determinar si es Puntuación o Reporte
                 const tipoEnvioRaw = String(r.tipo_envio || '');
                 const esPuntuacion = tipoEnvioRaw.toLowerCase().includes('calificación') || (r.puntuacion && r.puntuacion > 0 && !tipoEnvioRaw.includes('ruta') && !tipoEnvioRaw.includes('estado') && !tipoEnvioRaw.includes('mal'));
                 
-                const tipoTexto = esPuntuacion ? 'Puntuación / Reseña' : 'Reporte / Incidencia';
                 const badgeTipo = esPuntuacion 
                     ? `<span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">Puntuación / Reseña</span>`
                     : `<span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-red-100 text-red-800">Reporte / Incidencia</span>`;
 
-                // Estrellas de puntuación
                 let estrellasHtml = '<span class="text-slate-300">Sin calificación</span>';
                 if (r.puntuacion && r.puntuacion > 0) {
                     let stars = '';
@@ -218,7 +214,6 @@
                     estrellasHtml = `<div class="flex space-x-0.5 text-sm">${stars}</div>`;
                 }
 
-                // Formatear fecha
                 let fechaFormateada = r.fecha_hora;
                 try {
                     const fechaObj = new Date(r.fecha_hora);
@@ -296,7 +291,6 @@
             }
         }
 
-        // Cargar al iniciar
         cargarReportes();
     </script>
 </body>
