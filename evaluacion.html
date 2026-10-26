@@ -149,7 +149,7 @@
 
         const params = new URLSearchParams(window.location.search);
         let idCamionParam = params.get('id_camion') || '02';
-        let credencialParam = params.get('credencial'); // Capturamos la credencial específica del QR
+        let credencialParam = params.get('credencial');
 
         let choferActual = null;
         let calificacionSeleccionada = 0;
@@ -171,7 +171,6 @@
                         const numDB = idDB.replace(/\D/g, '');
                         const coincideCamion = idDB === idCamionParam.toUpperCase() || idDB === idTP || (numDB !== '' && numDB === numLimpio);
                         
-                        // Si el QR trae una credencial específica, filtramos exactamente por unidad Y operador
                         if (credencialParam) {
                             const credDB = String(c.credencial_chofer || '').trim();
                             return coincideCamion && credDB === credencialParam.trim();
@@ -195,7 +194,7 @@
                             `;
                         }
                     } else {
-                        document.getElementById('nombre-chofer').textContent = 'Operador no especificado para esta ficha';
+                        document.getElementById('nombre-chofer').textContent = 'Operador no especificado';
                         document.getElementById('credencial-chofer').textContent = credencialParam || '--';
                         document.getElementById('empresa-chofer').textContent = '--';
                         document.getElementById('badge-estatus').textContent = 'Unidad Compartida';
@@ -265,10 +264,10 @@
             calificacionSeleccionada = val;
             document.getElementById('calificacion-val').value = val;
             
-            const estrellas = document.querySelectorAll('#estrellas-container .star');
+            const estrictoEstrellas = document.querySelectorAll('#estrellas-container .star');
             const textos = ['', 'Pésimo 😡', 'Malo 🙁', 'Regular 😐', 'Bueno 🙂', 'Excelente 😃'];
 
-            estrellas.forEach((est, idx) => {
+            estrictoEstrellas.forEach((est, idx) => {
                 if (idx < val) {
                     est.classList.remove('text-slate-300');
                     est.classList.add('text-amber-400');
@@ -309,12 +308,36 @@
             }
 
             btn.disabled = true;
-            btn.textContent = 'Guardando registro...';
+            btn.textContent = 'Verificando seguridad...';
             alerta.classList.add('hidden');
 
             try {
-                // INSERCIÓN DIRECTA Y SEGURA A LA BASE DE DATOS
-                const { data, error: errorInsert } = await clientSupabase
+                // 1. VALIDACIÓN ESTRICTA: Verificar si la credencial existe en credenciales_validas
+                const { data: credencialesValidas, error: errorBusqueda } = await clientSupabase
+                    .from('credenciales_validas')
+                    .select('*')
+                    .eq('numero_credencial', credencialUsuario);
+
+                if (errorBusqueda) {
+                    throw new Error('Error al conectar con la base de datos para validar la credencial.');
+                }
+
+                if (!credencialesValidas || credencialesValidas.length === 0) {
+                    throw new Error('Acceso denegado: La credencial ingresada no está registrada en el sistema.');
+                }
+
+                // 2. VALIDACIÓN ESTRICTA DEL PIN: Comprobar que el PIN coincida exactamente
+                const usuarioAutorizado = credencialesValidas[0];
+                const pinRegistrado = String(usuarioAutorizado.pin_seguridad || '').trim();
+
+                if (pinRegistrado !== pinSeguridad) {
+                    throw new Error('Acceso denegado: El PIN de seguridad ingresado es incorrecto.');
+                }
+
+                // 3. SI AMBAS VALIDACIONES PASAN, PROCEDEMOS A INSERTAR EL REPORTE
+                btn.textContent = 'Guardando registro...';
+
+                const { error: errorInsert } = await clientSupabase
                     .from('reportes_recibidos')
                     .insert([
                         {
@@ -328,10 +351,12 @@
                         }
                     ]);
 
-                if (errorInsert) throw errorInsert;
+                if (errorInsert) {
+                    throw new Error('Error al guardar el reporte en la base de datos.');
+                }
 
-                // MENSAJE DE ÉXITO LIMPIO Y DIRECTO
-                alerta.textContent = '✅ ¡Registro enviado con éxito!';
+                // 4. MENSAJE DE ÉXITO
+                alerta.textContent = '✅ ¡Datos verificados y registro enviado con éxito!';
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200';
                 alerta.classList.remove('hidden');
 
@@ -342,11 +367,8 @@
                 cerrarCamara();
 
             } catch (err) {
-                console.error("Error detallado de Supabase:", err);
-                // Mostramos el mensaje exacto y detalles que arroja Supabase
-                const detalleError = err.message || JSON.stringify(err);
-                const hintError = err.details ? ` (${err.details})` : '';
-                alerta.textContent = `❌ Error: ${detalleError}${hintError}`;
+                console.error("Error de seguridad:", err);
+                alerta.textContent = `❌ ${err.message || 'Error al procesar la solicitud.'}`;
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-red-100 text-red-800 shadow-sm border border-red-200';
                 alerta.classList.remove('hidden');
             } finally {
