@@ -220,9 +220,17 @@
 
         function cerrarCamara() {
             if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                }).catch(err => console.error(err));
+                try {
+                    if (html5QrCode.isScanning) {
+                        html5QrCode.stop().then(() => {
+                            html5QrCode.clear();
+                        }).catch(err => console.log("Detención omitida:", err));
+                    } else {
+                        html5QrCode.clear();
+                    }
+                } catch (e) {
+                    console.log("Cámara ya detenida:", e);
+                }
             }
             document.getElementById('contenedor-camara').classList.add('hidden');
         }
