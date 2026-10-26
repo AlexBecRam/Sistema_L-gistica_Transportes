@@ -272,11 +272,13 @@
             const btn = document.getElementById('btn-enviar');
             const alerta = document.getElementById('alerta-mensaje');
             
-            // LIMPIEZA PROFUNDA: Quitamos espacios, saltos de línea o caracteres fantasma del escáner
-            const credencialUsuario = document.getElementById('credencial-usuario').value.replace(/[\n\r]+/g, '').trim();
+            // Limpieza profunda del texto ingresado o escaneado
+            let credencialUsuario = document.getElementById('credencial-usuario').value.replace(/[\n\r]+/g, '').trim();
             const pinSeguridad = document.getElementById('pin-seguridad').value.replace(/[\n\r]+/g, '').trim();
-            
             const categoria = document.getElementById('categoria-registro').value;
+
+            // Opcional: Si tus credenciales en BD no llevan ceros a la izquierda, puedes descomentar la siguiente línea:
+            // credencialUsuario = String(parseInt(credencialUsuario, 10));
 
             let tipoIncidenciaFinal = '';
             let calificacionFinal = null;
@@ -300,7 +302,7 @@
             alerta.classList.add('hidden');
 
             try {
-                // 1. CONSULTAR CREDENCIALES VÁLIDAS USANDO LA COLUMNA CORRECTA numero_credencial
+                // 1. VALIDAR CREDENCIAL EN SUPABASE
                 const { data: credenciales, error: errorCredencial } = await clientSupabase
                     .from('credenciales_validas')
                     .select('*')
@@ -312,7 +314,7 @@
                 }
 
                 if (!credenciales || credenciales.length === 0) {
-                    throw new Error('La credencial ingresada no se encuentra registrada en el sistema.');
+                    throw new Error(`La credencial "${credencialUsuario}" no está registrada en credenciales_validas.`);
                 }
 
                 const usuarioValido = credenciales[0];
@@ -321,7 +323,7 @@
                     throw new Error('El PIN de seguridad es incorrecto.');
                 }
 
-                // 2. INSERTAR EL REPORTE EN reportes_recibidos
+                // 2. INSERTAR REPORTE
                 const { error: errorInsert } = await clientSupabase
                     .from('reportes_recibidos')
                     .insert([
@@ -341,7 +343,7 @@
                     throw new Error('Error al guardar el reporte en la base de datos.');
                 }
 
-                // 3. MOSTRAR MENSAJE DE ÉXITO Y REINICIAR
+                // 3. ÉXITO
                 alerta.textContent = '✅ ¡Datos verificados y registro enviado con éxito!';
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200';
                 alerta.classList.remove('hidden');
