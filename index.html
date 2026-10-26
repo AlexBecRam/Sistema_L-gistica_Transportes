@@ -24,27 +24,55 @@
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800 font-sans flex flex-col justify-between">
 
-    <!-- BARRA DE NAVEGACIÓN UNIFICADA Y RESPONSIVA -->
-    <nav class="bg-slate-900 text-white shadow-lg border-b border-slate-800 no-print">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
-            <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
-                <div class="flex items-center space-x-2">
-                    <img src="/static/Iusa-logotipo.jpg" 
-                         onerror="this.style.display='none'; document.getElementById('logo-fallback').classList.remove('hidden');" 
-                         alt="Logo IUSA" 
-                         class="h-8 sm:h-9 w-auto object-contain rounded bg-white p-1 shadow-sm">
-                    <div id="logo-fallback" class="hidden bg-red-600 text-white font-extrabold px-2 py-1 rounded text-xs tracking-wider">IUSA</div>
-                    <span class="font-bold text-xs sm:text-sm tracking-wide text-slate-100">Sistema generador de reportes IUSA</span>
-                </div>
+    <!-- BARRA DE NAVEGACIÓN UNIFICADA Y RESPONSIVA CON MENÚ DESPLEGABLE -->
+    <nav class="bg-slate-900 text-white shadow-lg border-b border-slate-800 no-print relative z-50">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            
+            <!-- LOGO Y TÍTULO -->
+            <div class="flex items-center space-x-3">
+                <img src="/static/Iusa-logotipo.jpg" 
+                     onerror="this.style.display='none'; document.getElementById('logo-fallback').classList.remove('hidden');" 
+                     alt="Logo IUSA" 
+                     class="h-8 sm:h-9 w-auto object-contain rounded bg-white p-1 shadow-sm">
+                <div id="logo-fallback" class="hidden bg-red-600 text-white font-extrabold px-2 py-1 rounded text-xs tracking-wider">IUSA</div>
+                <span class="font-bold text-xs sm:text-sm tracking-wide text-slate-100">Sistema generador de reportes IUSA</span>
             </div>
-            <div class="flex items-center flex-wrap justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium w-full md:w-auto">
-                <a href="/" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">Reportes Operativos</a>
-                <a href="/reportes" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Evaluación Servicio</a>
-                <a href="/qr_generator" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">QR</a>
+
+            <!-- ENLACES EN COMPUTADORA (Escritorio) -->
+            <div class="hidden md:flex items-center space-x-2 text-xs sm:text-sm font-medium">
+                <a href="/" class="px-3 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">Reportes Operativos</a>
+                <a href="/reportes" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Buzón de Evaluaciones</a>
+                <a href="/qr_generator" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">QR</a>
                 
                 <!-- BOTÓN CERRAR SESIÓN -->
-                <button onclick="cerrarSesion()" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition text-xs shadow flex items-center space-x-1">
+                <button onclick="cerrarSesion()" class="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition text-xs shadow flex items-center space-x-1 ml-2">
                     <i class="fa-solid fa-lock text-[10px]"></i>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </div>
+
+            <!-- BOTÓN DE MENÚ HAMBURGUESA (Móviles) -->
+            <div class="md:hidden flex items-center">
+                <button onclick="toggleMenuMovil()" class="p-2 rounded-xl bg-slate-800 text-slate-200 hover:text-white focus:outline-none transition">
+                    <i id="icono-menu" class="fa-solid fa-bars text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- MENÚ DESPLEGABLE MÓVIL -->
+        <div id="menu-movil" class="hidden md:hidden bg-slate-900 border-t border-slate-800 px-4 pt-3 pb-5 space-y-2 shadow-2xl">
+            <a href="/" class="block px-4 py-2.5 rounded-xl text-sm font-medium bg-blue-600 text-white shadow transition">
+                Reportes Operativos
+            </a>
+            <a href="/reportes" class="block px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition">
+                Buzón de Evaluaciones
+            </a>
+            <a href="/qr_generator" class="block px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition">
+                Generador de QRs (QR)
+            </a>
+            <div class="pt-2 border-t border-slate-800">
+                <button onclick="cerrarSesion()" class="w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold bg-red-600 hover:bg-red-700 text-white transition flex items-center space-x-2 shadow">
+                    <i class="fa-solid fa-lock text-xs"></i>
                     <span>Cerrar Sesión</span>
                 </button>
             </div>
@@ -122,6 +150,22 @@
     </footer>
 
     <script>
+        // Función para controlar el menú desplegable en móviles
+        function toggleMenuMovil() {
+            const menu = document.getElementById('menu-movil');
+            const icono = document.getElementById('icono-menu');
+            
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                icono.classList.remove('fa-bars');
+                icono.classList.add('fa-xmark');
+            } else {
+                menu.classList.add('hidden');
+                icono.classList.remove('fa-xmark');
+                icono.classList.add('fa-bars');
+            }
+        }
+
         const sessionData = localStorage.getItem('iusa_session');
         if (!sessionData) {
             window.location.href = '/login';
