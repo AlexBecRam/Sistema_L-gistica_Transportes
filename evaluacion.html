@@ -198,7 +198,6 @@
             }
         }
 
-        // ESCÁNER DE CÁMARA REAL CON HTML5-QRCODE
         function iniciarEscaneoCamara() {
             const contenedorCamara = document.getElementById('contenedor-camara');
             contenedorCamara.classList.remove('hidden');
@@ -211,9 +210,7 @@
                     document.getElementById('credencial-usuario').value = decodedText.trim();
                     cerrarCamara();
                 },
-                (errorMessage) => {
-                    // Errores de escaneo en tiempo real se ignoran para mantener la fluidez
-                }
+                (errorMessage) => {}
             ).catch(err => {
                 console.error("Error al iniciar cámara:", err);
                 alert("No se pudo iniciar el escáner de cámara. Ingresa tu credencial manualmente.");
@@ -296,18 +293,24 @@
 
             btn.disabled = true;
             btn.textContent = 'Verificando y enviando...';
+            alerta.classList.add('hidden');
 
             try {
                 // 1. VALIDAR CONTRA LA TABLA credenciales_validas DE SUPABASE
-                const { data: credencialValida, error: errorCredencial } = await clientSupabase
+                const { data: listaCredenciales, error: errorCredencial } = await clientSupabase
                     .from('credenciales_validas')
                     .select('*')
-                    .eq('numero_credencial', credencialUsuario)
-                    .single();
+                    .eq('numero_credencial', credencialUsuario);
 
-                if (errorCredencial || !credencialValida) {
+                if (errorCredencial) {
+                    throw new Error('Error de conexión al verificar la credencial en la base de datos.');
+                }
+
+                if (!listaCredenciales || listaCredenciales.length === 0) {
                     throw new Error('La credencial ingresada no se encuentra registrada en el sistema.');
                 }
+
+                const credencialValida = listaCredenciales[0];
 
                 if (String(credencialValida.pin_seguridad).trim() !== pinSeguridad) {
                     throw new Error('El PIN de seguridad es incorrecto.');
@@ -328,10 +331,13 @@
                         }
                     ]);
 
-                if (errorInsert) throw errorInsert;
+                if (errorInsert) {
+                    throw new Error('Error al registrar el reporte en el sistema.');
+                }
 
-                alerta.textContent = '✅ ¡Registro enviado con éxito!';
-                alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm';
+                // 3. MOSTRAR MENSAJE DE ÉXITO CLARO Y VÁLIDO
+                alerta.textContent = '✅ ¡Datos verificados y registro enviado con éxito!';
+                alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200';
                 alerta.classList.remove('hidden');
 
                 document.getElementById('form-registro').reset();
@@ -342,8 +348,8 @@
 
             } catch (err) {
                 console.error("Error en validación o envío:", err);
-                alerta.textContent = `❌ ${err.message || 'Error al enviar el registro. Revisa los datos.'}`;
-                alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-red-100 text-red-800 shadow-sm';
+                alerta.textContent = `❌ ${err.message || 'Error al procesar la solicitud.'}`;
+                alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-red-100 text-red-800 shadow-sm border border-red-200';
                 alerta.classList.remove('hidden');
             } finally {
                 btn.disabled = false;
