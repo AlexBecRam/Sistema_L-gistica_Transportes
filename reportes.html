@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Administrativo - Buzón de Reportes IUSA</title>
+    <title>Panel Administrativo - Buzón de Evaluaciones</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 font-sans flex flex-col justify-between">
 
-    <!-- BARRA DE NAVEGACIÓN UNIFICADA Y RESPONSIVA -->
-    <nav class="bg-slate-900 text-white shadow-lg border-b border-slate-800 no-print">
+    <!-- BARRA DE NAVEGACIÓN -->
+    <nav class="bg-slate-900 text-white shadow-lg border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
             <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
                 <div class="flex items-center space-x-2">
@@ -24,11 +24,10 @@
                 </div>
             </div>
             <div class="flex items-center flex-wrap justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium w-full md:w-auto">
-                <a href="/" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Reportes Operativos</a>
-                <a href="/reportes" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">Evaluación Servicio</a>
-                <a href="/qr_generator" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">QR</a>
+                <a href="/reportes" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">📊 Reportes Operativos</a>
+                <a href="/evaluacion" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📝 Evaluación Servicio</a>
+                <a href="/qr_generator" class="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">📷 QR</a>
                 
-                <!-- BOTÓN CERRAR SESIÓN -->
                 <button onclick="cerrarSesion()" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition text-xs shadow flex items-center space-x-1">
                     <i class="fa-solid fa-lock text-[10px]"></i>
                     <span>Cerrar Sesión</span>
@@ -38,109 +37,114 @@
     </nav>
 
     <!-- CONTENIDO PRINCIPAL -->
-    <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 flex-grow w-full">
+    <main class="max-w-7xl mx-auto px-4 py-6 sm:py-8 flex-grow w-full space-y-6">
         
-        <!-- ENCABEZADO Y ESTADÍSTICAS RÁPIDAS -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <!-- ENCABEZADO DE SECCIÓN -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div>
-                <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Buzón de Evaluaciones</h1>
-                <p class="text-xs sm:text-sm text-slate-500">Gestión de reportes de trabajadores en unidades de transporte IUSA.</p>
+                <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Buzón de Evaluaciones</h1>
+                <p class="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">Gestión y control de reportes de trabajadores en unidades de transporte IUSA.</p>
             </div>
-            <button onclick="cargarReportes()" class="inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow transition w-full sm:w-auto">
+            <button onclick="cargarReportes()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow text-xs transition flex items-center space-x-2">
                 <i class="fa-solid fa-rotate"></i>
                 <span>Actualizar Tabla</span>
             </button>
         </div>
 
-        <!-- TARJETAS DE KPIs -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <p class="text-[11px] sm:text-xs font-bold text-slate-400 uppercase">Total de Registros</p>
-                <p id="kpi-total" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">0</p>
+        <!-- TARJETAS DE MÉTRICAS -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">TOTAL DE REGISTROS</span>
+                <span id="stat-total" class="text-2xl sm:text-3xl font-black text-slate-900 mt-2">0</span>
             </div>
-            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <p class="text-[11px] sm:text-xs font-bold text-slate-400 uppercase">Promedio de Puntuación</p>
-                <p id="kpi-promedio" class="text-2xl sm:text-3xl font-extrabold text-amber-500 mt-1">0.0 ★</p>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">PROMEDIO DE PUNTUACIÓN</span>
+                <div class="flex items-center space-x-2 mt-2">
+                    <span id="stat-promedio" class="text-2xl sm:text-3xl font-black text-amber-500">0.0</span>
+                    <span class="text-amber-400 text-xl">★</span>
+                </div>
             </div>
-            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <p class="text-[11px] sm:text-xs font-bold text-slate-400 uppercase">Quejas / Reportes</p>
-                <p id="kpi-quejas" class="text-2xl sm:text-3xl font-extrabold text-red-600 mt-1">0</p>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">REPORTE / INCIDENCIA</span>
+                <span id="stat-reportes" class="text-2xl sm:text-3xl font-black text-red-600 mt-2">0</span>
             </div>
         </div>
 
-        <!-- FILTROS Y BÚSQUEDA -->
-        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <div class="flex flex-col sm:flex-row gap-3 items-center w-full">
-                <input type="text" id="filter-search" onkeyup="filtrarTabla()" placeholder="Buscar por Folio, Credencial o Camión..." 
-                       class="px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-full sm:w-72">
-                
-                <select id="filter-tipo" onchange="filtrarTabla()" class="px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-full sm:w-auto bg-white">
-                    <option value="TODOS">Todos los tipos</option>
-                    <option value="Calificación (Estrellas)">Solo Calificaciones</option>
-                    <option value="Queja / Reporte">Solo Quejas / Reportes</option>
-                    <option value="Sugerencia">Solo Sugerencias</option>
+        <!-- FILTROS Y BUSCADOR -->
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="w-full sm:w-96 relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+                <input type="text" id="input-busqueda" onkeyup="filtrarTabla()" placeholder="Buscar por Folio, Credencial, Nombre o Camión..." 
+                       class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            </div>
+            
+            <div class="w-full sm:w-64">
+                <select id="filtro-tipo" onchange="filtrarTabla()" 
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white">
+                    <option value="todos">Todos los tipos</option>
+                    <option value="puntuacion">Puntuación / Reseña</option>
+                    <option value="reporte">Reporte / Incidencia</option>
                 </select>
             </div>
-            <span id="txt-contador" class="text-xs text-slate-500 font-medium whitespace-nowrap">Mostrando 0 registros</span>
         </div>
 
-        <!-- TABLA DE REPORTES -->
+        <!-- TABLA DE REGISTROS -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse min-w-[750px]">
+                <table class="w-full text-left border-collapse text-xs">
                     <thead>
-                        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        <tr class="bg-slate-50 text-slate-400 font-extrabold uppercase tracking-wider border-b border-slate-200 text-[10px]">
                             <th class="p-4">Folio</th>
                             <th class="p-4">Fecha / Hora</th>
                             <th class="p-4">Camión</th>
                             <th class="p-4">Credencial Emisor</th>
+                            <th class="p-4">Nombre Emisor</th>
                             <th class="p-4">Tipo</th>
                             <th class="p-4">Puntuación</th>
                             <th class="p-4">Comentario / Observación</th>
                             <th class="p-4 text-center">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody id="tabla-body" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                    <tbody id="tabla-reportes-body" class="divide-y divide-slate-100 text-slate-700 font-medium">
                         <tr>
-                            <td colspan="8" class="p-8 text-center text-slate-400 font-medium">Cargando reportes desde Supabase...</td>
+                            <td colspan="9" class="p-6 text-center text-slate-400">Cargando registros...</td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-200 text-right text-xs text-slate-500 font-semibold" id="contador-mostrados">
+                Mostrando 0 de 0 registros
             </div>
         </div>
 
     </main>
 
     <!-- Footer -->
-    <footer class="text-center py-6 text-xs text-slate-400 no-print">
+    <footer class="text-center py-6 text-xs text-slate-400">
         <p>Sistema generador de reportes IUSA &copy; 2026</p>
     </footer>
 
     <script>
-        const sessionData = localStorage.getItem('iusa_session');
-        if (!sessionData) {
-            window.location.href = '/login';
-        }
-
-        async function cerrarSesion() {
-            localStorage.removeItem('iusa_session');
-            if (typeof clientSupabase !== 'undefined' && clientSupabase.auth) {
-                await clientSupabase.auth.signOut();
-            }
-            window.location.href = '/login';
-        }
-
         const SUPABASE_URL = 'https://jjfcesrsexuxyamoghsx.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_tkHpyaqmhlm8HuQvcVwzPg_Q0hehaPF';
-
         const clientSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        let listaReportesOriginal = [];
+
+        let reportesGlobal = [];
+        let usuariosMap = {}; // Diccionario para relacionar credencial con nombre del emisor
 
         async function cargarReportes() {
-            const tbody = document.getElementById('tabla-body');
-            tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 font-medium">Cargando reportes desde Supabase...</td></tr>';
-
             try {
+                // 1. Cargar catálogo de usuarios (credenciales_validas) para extraer nombres
+                const { data: usuariosData } = await clientSupabase.from('credenciales_validas').select('*');
+                if (usuariosData) {
+                    usuariosData.forEach(u => {
+                        const cred = String(u.numero_credencial || '').trim();
+                        // Ajusta 'nombre' o 'nombre_completo' según el campo exacto de tu tabla credenciales_validas
+                        usuariosMap[cred] = u.nombre || u.nombre_completo || u.nombre_empleado || 'Colaborador IUSA';
+                    });
+                }
+
+                // 2. Cargar reportes recibidos
                 const { data, error } = await clientSupabase
                     .from('reportes_recibidos')
                     .select('*')
@@ -148,94 +152,151 @@
 
                 if (error) throw error;
 
-                listaReportesOriginal = data || [];
-                actualizarKPIs(listaReportesOriginal);
-                renderTabla(listaReportesOriginal);
+                reportesGlobal = data || [];
+                actualizarMetricas(reportesGlobal);
+                renderTabla(reportesGlobal);
 
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-red-500 font-medium">❌ Error al consultar Supabase: ${err.message || err}</td></tr>`;
+                console.error("Error al cargar reportes:", err);
+                document.getElementById('tabla-reportes-body').innerHTML = `
+                    <tr><td colspan="9" class="p-6 text-center text-red-600 font-bold">Error al cargar los datos de la base de datos.</td></tr>`;
             }
         }
 
-        function actualizarKPIs(data) {
-            document.getElementById('kpi-total').textContent = data.length;
+        function actualizarMetricas(data) {
+            const total = data.length;
+            document.getElementById('stat-total').textContent = total;
 
-            const quejas = data.filter(r => (r.tipo_envio || '').includes('Queja') || (r.tipo_envio || '').includes('Reporte')).length;
-            document.getElementById('kpi-quejas').textContent = quejas;
-
-            const puntuaciones = data.map(r => parseFloat(r.puntuacion) || 0).filter(p => p > 0);
-            if (puntuaciones.length > 0) {
-                const suma = puntuaciones.reduce((a, b) => a + b, 0);
-                const prom = (suma / puntuaciones.length).toFixed(1);
-                document.getElementById('kpi-promedio').textContent = `${prom} ★`;
+            // Calcular promedio de puntuación (filtrando los que tienen puntuación válida mayor a 0)
+            const conPuntuacion = data.filter(r => r.puntuacion && r.puntuacion > 0);
+            if (conPuntuacion.length > 0) {
+                const suma = conPuntuacion.reduce((acc, curr) => acc + Number(curr.puntuacion), 0);
+                document.getElementById('stat-promedio').textContent = (suma / conPuntuacion.length).toFixed(1);
             } else {
-                document.getElementById('kpi-promedio').textContent = 'N/A';
+                document.getElementById('stat-promedio').textContent = '0.0';
             }
+
+            // Conteo de Reporte / Incidencia (todo lo que no sea calificación por estrellas)
+            const totalReportes = data.filter(r => {
+                const tipo = String(r.tipo_envio || '').toLowerCase();
+                return tipo.includes('reporte') || tipo.includes('incidencia') || !tipo.includes('calificación');
+            }).length;
+
+            document.getElementById('stat-reportes').textContent = totalReportes;
         }
 
         function renderTabla(data) {
-            const tbody = document.getElementById('tabla-body');
-            document.getElementById('txt-contador').textContent = `Mostrando ${data.length} de ${listaReportesOriginal.length} registros`;
-
+            const tbody = document.getElementById('tabla-reportes-body');
+            
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 font-medium">No se encontraron reportes almacenados.</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400 font-medium">No se encontraron registros en el buzón.</td></tr>`;
+                document.getElementById('contador-mostrados').textContent = 'Mostrando 0 de 0 registros';
                 return;
             }
 
-            tbody.innerHTML = data.map(r => {
-                const fecha = r.fecha_hora ? new Date(r.fecha_hora).toLocaleString('es-MX') : '--';
-                const estrellas = '★'.repeat(parseInt(r.puntuacion) || 0) + '☆'.repeat(5 - (parseInt(r.puntuacion) || 0));
+            let html = '';
+            data.forEach(r => {
+                const credencial = String(r.credencial_emisor || '').trim();
+                const nombreEmisor = usuariosMap[credencial] || 'Colaborador IUSA';
                 
-                let badgeClass = 'bg-slate-100 text-slate-700';
-                if ((r.tipo_envio || '').includes('Queja')) badgeClass = 'bg-red-100 text-red-700';
-                else if ((r.tipo_envio || '').includes('Calificación')) badgeClass = 'bg-emerald-100 text-emerald-700';
-                else if ((r.tipo_envio || '').includes('Sugerencia')) badgeClass = 'bg-amber-100 text-amber-700';
+                // Determinar si es Puntuación o Reporte
+                const tipoEnvioRaw = String(r.tipo_envio || '');
+                const esPuntuacion = tipoEnvioRaw.toLowerCase().includes('calificación') || (r.puntuacion && r.puntuacion > 0 && !tipoEnvioRaw.includes('ruta') && !tipoEnvioRaw.includes('estado') && !tipoEnvioRaw.includes('mal'));
+                
+                const tipoTexto = esPuntuacion ? 'Puntuación / Reseña' : 'Reporte / Incidencia';
+                const badgeTipo = esPuntuacion 
+                    ? `<span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">Puntuación / Reseña</span>`
+                    : `<span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-red-100 text-red-800">Reporte / Incidencia</span>`;
 
-                return `
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="p-4 font-bold text-blue-900">${r.folio_reporte || 'N/A'}</td>
-                        <td class="p-4 text-xs text-slate-500 whitespace-nowrap">${fecha}</td>
+                // Estrellas de puntuación
+                let estrellasHtml = '<span class="text-slate-300">Sin calificación</span>';
+                if (r.puntuacion && r.puntuacion > 0) {
+                    let stars = '';
+                    for (let i = 1; i <= 5; i++) {
+                        stars += i <= r.puntuacion ? '<span class="text-amber-400">★</span>' : '<span class="text-slate-300">★</span>';
+                    }
+                    estrellasHtml = `<div class="flex space-x-0.5 text-sm">${stars}</div>`;
+                }
+
+                // Formatear fecha
+                let fechaFormateada = r.fecha_hora;
+                try {
+                    const fechaObj = new Date(r.fecha_hora);
+                    if (!isNaN(fechaObj)) {
+                        fechaFormateada = fechaObj.toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+                    }
+                } catch(e) {}
+
+                html += `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                        <td class="p-4 font-mono font-bold text-slate-900">${r.folio_reporte || 'N/A'}</td>
+                        <td class="p-4 text-slate-600">${fechaFormateada}</td>
                         <td class="p-4 font-bold text-slate-800">Camión ${r.id_camion || '--'}</td>
-                        <td class="p-4 font-mono text-xs text-slate-600">${r.credencial_emisor || '--'}</td>
-                        <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${badgeClass}">${r.tipo_envio || 'General'}</span></td>
-                        <td class="p-4 text-amber-500 font-bold tracking-widest">${estrellas}</td>
-                        <td class="p-4 text-slate-600 max-w-xs truncate" title="${r.comentario || ''}">${r.comentario || '<span class="text-slate-300">Sin comentarios</span>'}</td>
+                        <td class="p-4 font-mono font-semibold">${credencial}</td>
+                        <td class="p-4 font-bold text-blue-900">${nombreEmisor}</td>
+                        <td class="p-4">${badgeTipo}</td>
+                        <td class="p-4">${estrellasHtml}</td>
+                        <td class="p-4 text-slate-600 max-w-xs truncate" title="${r.comentario || ''}">${r.comentario || r.tipo_envio || '--'}</td>
                         <td class="p-4 text-center">
-                            <button onclick="eliminarReporte(${r.id})" class="text-xs text-red-500 hover:text-red-700 font-semibold hover:underline">Eliminar</button>
+                            <button onclick="eliminarReporte(${r.id})" class="text-red-500 hover:text-red-700 font-bold transition text-xs bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg">
+                                Eliminar
+                            </button>
                         </td>
                     </tr>
                 `;
-            }).join('');
+            });
+
+            tbody.innerHTML = html;
+            document.getElementById('contador-mostrados').textContent = `Mostrando ${data.length} de ${reportesGlobal.length} registros`;
         }
 
         function filtrarTabla() {
-            const search = document.getElementById('filter-search').value.toLowerCase();
-            const tipo = document.getElementById('filter-tipo').value;
+            const textoBusqueda = document.getElementById('input-busqueda').value.toLowerCase();
+            const filtroTipo = document.getElementById('filtro-tipo').value;
 
-            const filtrados = listaReportesOriginal.filter(r => {
-                const matchSearch = (r.folio_reporte || '').toLowerCase().includes(search) ||
-                                    (r.credencial_emisor || '').toLowerCase().includes(search) ||
-                                    (r.id_camion || '').toLowerCase().includes(search);
-                const matchTipo = (tipo === 'TODOS') || (r.tipo_envio === tipo);
+            const filtrados = reportesGlobal.filter(r => {
+                const folio = String(r.folio_reporte || '').toLowerCase();
+                const credencial = String(r.credencial_emisor || '').toLowerCase();
+                const nombre = String(usuariosMap[r.credencial_emisor] || '').toLowerCase();
+                const camion = String(r.id_camion || '').toLowerCase();
+                const comentario = String(r.comentario || '').toLowerCase();
 
-                return matchSearch && matchTipo;
+                const coincideTexto = folio.includes(textoBusqueda) || 
+                                     credencial.includes(textoBusqueda) || 
+                                     nombre.includes(textoBusqueda) || 
+                                     camion.includes(textoBusqueda) || 
+                                     comentario.includes(textoBusqueda);
+
+                const tipoEnvioRaw = String(r.tipo_envio || '').toLowerCase();
+                const esPuntuacion = tipoEnvioRaw.includes('calificación') || (r.puntuacion && r.puntuacion > 0 && !tipoEnvioRaw.includes('ruta') && !tipoEnvioRaw.includes('estado') && !tipoEnvioRaw.includes('mal'));
+
+                let coincideTipo = true;
+                if (filtroTipo === 'puntuacion') {
+                    coincideTipo = esPuntuacion;
+                } else if (filtroTipo === 'reporte') {
+                    coincideTipo = !esPuntuacion;
+                }
+
+                return coincideTexto && coincideTipo;
             });
 
             renderTabla(filtrados);
         }
 
         async function eliminarReporte(id) {
-            if (!confirm('¿Estás seguro de que deseas eliminar este registro?')) return;
+            if (!confirm('¿Estás seguro de eliminar este registro del buzón?')) return;
 
             try {
                 const { error } = await clientSupabase.from('reportes_recibidos').delete().eq('id', id);
                 if (error) throw error;
                 cargarReportes();
             } catch (err) {
-                alert('Error al eliminar: ' + (err.message || err));
+                console.error("Error al eliminar:", err);
+                alert('No se pudo eliminar el registro.');
             }
         }
 
+        // Cargar al iniciar
         cargarReportes();
     </script>
 </body>
