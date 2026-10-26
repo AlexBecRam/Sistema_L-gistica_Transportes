@@ -207,7 +207,8 @@
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 250, height: 150 } },
                 (decodedText) => {
-                    document.getElementById('credencial-usuario').value = decodedText.trim();
+                    // Limpiamos espacios o saltos de línea al escanear
+                    document.getElementById('credencial-usuario').value = decodedText.replace(/[\n\r]+/g, '').trim();
                     cerrarCamara();
                 },
                 (errorMessage) => {}
@@ -270,8 +271,11 @@
 
             const btn = document.getElementById('btn-enviar');
             const alerta = document.getElementById('alerta-mensaje');
-            const credencialUsuario = document.getElementById('credencial-usuario').value.trim();
-            const pinSeguridad = document.getElementById('pin-seguridad').value.trim();
+            
+            // LIMPIEZA PROFUNDA: Quitamos espacios, saltos de línea o caracteres fantasma del escáner
+            const credencialUsuario = document.getElementById('credencial-usuario').value.replace(/[\n\r]+/g, '').trim();
+            const pinSeguridad = document.getElementById('pin-seguridad').value.replace(/[\n\r]+/g, '').trim();
+            
             const categoria = document.getElementById('categoria-registro').value;
 
             let tipoIncidenciaFinal = '';
