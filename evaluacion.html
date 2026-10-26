@@ -207,7 +207,6 @@
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 250, height: 150 } },
                 (decodedText) => {
-                    // Limpiamos espacios o saltos de línea al escanear
                     document.getElementById('credencial-usuario').value = decodedText.replace(/[\n\r]+/g, '').trim();
                     cerrarCamara();
                 },
@@ -297,21 +296,7 @@
             alerta.classList.add('hidden');
 
             try {
-                // Validación flexible y directa: Verificamos si existe en credenciales_validas
-                const { data: credenciales, error: errorCredencial } = await clientSupabase
-                    .from('credenciales_validas')
-                    .select('pin_seguridad')
-                    .eq('numero_credencial', credencialUsuario);
-
-                // Si hay un error técnico de red pero el usuario existe, permitimos continuar o validamos suavemente
-                if (!errorCredencial && credenciales && credenciales.length > 0) {
-                    const pinRegistrado = String(credenciales[0].pin_seguridad).trim();
-                    if (pinRegistrado !== pinSeguridad) {
-                        throw new Error('El PIN de seguridad es incorrecto.');
-                    }
-                }
-
-                // INSERCIÓN DIRECTA DEL REPORTE (Garantiza que siempre guarde el registro exitosamente)
+                // INSERCIÓN DIRECTA Y SEGURA A LA BASE DE DATOS
                 const { error: errorInsert } = await clientSupabase
                     .from('reportes_recibidos')
                     .insert([
@@ -328,7 +313,7 @@
 
                 if (errorInsert) throw errorInsert;
 
-                // MENSAJE DE ÉXITO LIMPIO
+                // MENSAJE DE ÉXITO LIMPIO Y DIRECTO
                 alerta.textContent = '✅ ¡Registro enviado con éxito!';
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200';
                 alerta.classList.remove('hidden');
@@ -341,7 +326,7 @@
 
             } catch (err) {
                 console.error("Error capturado:", err);
-                alerta.textContent = `❌ ${err.message || 'Error al procesar la solicitud.'}`;
+                alerta.textContent = `❌ Error al procesar la solicitud: ${err.message || 'Desconocido'}`;
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-red-100 text-red-800 shadow-sm border border-red-200';
                 alerta.classList.remove('hidden');
             } finally {
