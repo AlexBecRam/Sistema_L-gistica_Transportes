@@ -296,27 +296,28 @@
             alerta.classList.add('hidden');
 
             try {
-                // 1. VALIDAR CONTRA LA TABLA credenciales_validas DE SUPABASE
-                const { data: listaCredenciales, error: errorCredencial } = await clientSupabase
+                // 1. CONSULTAR CREDENCIALES VÁLIDAS USANDO LA COLUMNA CORRECTA numero_credencial
+                const { data: credenciales, error: errorCredencial } = await clientSupabase
                     .from('credenciales_validas')
                     .select('*')
                     .eq('numero_credencial', credencialUsuario);
 
                 if (errorCredencial) {
-                    throw new Error('Error de conexión al verificar la credencial en la base de datos.');
+                    console.error("Error Supabase Credenciales:", errorCredencial);
+                    throw new Error('Error al conectar con la base de datos de credenciales.');
                 }
 
-                if (!listaCredenciales || listaCredenciales.length === 0) {
+                if (!credenciales || credenciales.length === 0) {
                     throw new Error('La credencial ingresada no se encuentra registrada en el sistema.');
                 }
 
-                const credencialValida = listaCredenciales[0];
+                const usuarioValido = credenciales[0];
 
-                if (String(credencialValida.pin_seguridad).trim() !== pinSeguridad) {
+                if (String(usuarioValido.pin_seguridad).trim() !== pinSeguridad) {
                     throw new Error('El PIN de seguridad es incorrecto.');
                 }
 
-                // 2. INSERTAR EL REPORTE EXITOSAMENTE EN reportes_recibidos
+                // 2. INSERTAR EL REPORTE EN reportes_recibidos
                 const { error: errorInsert } = await clientSupabase
                     .from('reportes_recibidos')
                     .insert([
@@ -332,10 +333,11 @@
                     ]);
 
                 if (errorInsert) {
-                    throw new Error('Error al registrar el reporte en el sistema.');
+                    console.error("Error Supabase Insert:", errorInsert);
+                    throw new Error('Error al guardar el reporte en la base de datos.');
                 }
 
-                // 3. MOSTRAR MENSAJE DE ÉXITO CLARO Y VÁLIDO
+                // 3. MOSTRAR MENSAJE DE ÉXITO Y REINICIAR
                 alerta.textContent = '✅ ¡Datos verificados y registro enviado con éxito!';
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200';
                 alerta.classList.remove('hidden');
@@ -347,7 +349,7 @@
                 cerrarCamara();
 
             } catch (err) {
-                console.error("Error en validación o envío:", err);
+                console.error("Error capturado:", err);
                 alerta.textContent = `❌ ${err.message || 'Error al procesar la solicitud.'}`;
                 alerta.className = 'p-3 rounded-xl text-center text-xs font-bold bg-red-100 text-red-800 shadow-sm border border-red-200';
                 alerta.classList.remove('hidden');
