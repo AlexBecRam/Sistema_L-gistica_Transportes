@@ -127,7 +127,7 @@
                 <div class="flex justify-between items-center mb-2">
                     <span id="progress-text" class="text-[11px] sm:text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-2">
                         <i class="fa-solid fa-circle-notch animate-spin text-blue-600"></i>
-                        Procesando datos y estructurando turnos...
+                        Procesando datos y estructurando turnos en el servidor...
                     </span>
                     <span id="progress-percent" class="text-xs font-bold text-slate-600">0%</span>
                 </div>
@@ -150,7 +150,6 @@
     </footer>
 
     <script>
-        // Función para controlar el menú desplegable en móviles
         function toggleMenuMovil() {
             const menu = document.getElementById('menu-movil');
             const icono = document.getElementById('icono-menu');
@@ -192,7 +191,6 @@
         const progressContainer = document.getElementById('progress-container');
         const progressBar = document.getElementById('progress-bar');
         const progressPercent = document.getElementById('progress-percent');
-        const progressText = document.getElementById('progress-text');
         const alertBox = document.getElementById('alert-box');
         const alertIcon = document.getElementById('alert-icon');
         const alertMessage = document.getElementById('alert-message');
@@ -229,17 +227,12 @@
 
         function handleFileSelect(file) {
             hideAlert();
-            
             const lowerName = file.name.toLowerCase();
 
             if (!lowerName.endsWith('.xlsx') && !lowerName.endsWith('.xls')) {
-                showAlert('El archivo seleccionado no es válido. Por favor, sube únicamente archivos de reporte en formato Excel (.xls o .xlsx).', 'error');
+                showAlert('El archivo seleccionado no es válido. Por favor, sube únicamente archivos en formato Excel (.xls o .xlsx).', 'error');
                 resetFileInput();
                 return;
-            }
-
-            if (lowerName.includes('reporte_procesado') || lowerName.includes('procesado')) {
-                showAlert('Atención: El archivo parece ser un reporte ya procesado previamente. Asegúrate de subir el archivo con los datos operativos originales.', 'warning');
             }
 
             selectedFile = file;
@@ -276,7 +269,6 @@
                 alertBox.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-200');
                 alertIcon.className = 'fa-solid fa-circle-check text-emerald-500 text-lg mt-0.5';
             }
-
             alertMessage.innerHTML = message;
         }
 
@@ -293,20 +285,22 @@
             hideAlert();
             processBtn.disabled = true;
             progressContainer.classList.remove('hidden');
-            progressBar.style.width = '100%';
-            progressPercent.textContent = '10%';
-
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-
+            
+            // Animación de barra de carga fluida mientras el servidor procesa
             let progressVal = 10;
+            progressBar.style.width = progressVal + '%';
+            progressPercent.textContent = progressVal + '%';
+
             const interval = setInterval(() => {
                 if (progressVal < 90) {
-                    progressVal += 15;
+                    progressVal += 5;
                     progressBar.style.width = progressVal + '%';
                     progressPercent.textContent = progressVal + '%';
                 }
-            }, 300);
+            }, 500);
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
 
             try {
                 const response = await fetch('/procesar-reporte/', {
@@ -317,13 +311,12 @@
                 clearInterval(interval);
 
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ detail: 'Ocurrió un error inesperado en el servidor.' }));
+                    const errorData = await response.json().catch(() => ({ detail: 'Error en el servidor.' }));
                     throw new Error(errorData.detail || 'Error en el procesamiento del reporte.');
                 }
 
                 progressBar.style.width = '100%';
                 progressPercent.textContent = '100%';
-                progressText.innerHTML = '<i class="fa-solid fa-check text-emerald-600"></i> ¡Reporte procesado exitosamente!';
 
                 const blob = await response.blob();
                 const downloadUrl = window.URL.createObjectURL(blob);
@@ -335,7 +328,7 @@
                 a.remove();
                 window.URL.revokeObjectURL(downloadUrl);
 
-                showAlert('¡El reporte se generó e incluyó la Hoja Inicial de Resumen Global correctamente!', 'success');
+                showAlert('¡El reporte se generó y descargó exitosamente!', 'success');
 
             } catch (err) {
                 clearInterval(interval);
@@ -345,7 +338,7 @@
                     processBtn.disabled = false;
                     progressContainer.classList.add('hidden');
                     progressBar.style.width = '0%';
-                }, 2000);
+                }, 1500);
             }
         });
     </script>
