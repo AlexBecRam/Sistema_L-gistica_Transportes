@@ -109,7 +109,7 @@ async def procesar_reporte(file: UploadFile = File(...)):
     
     df = None
     try:
-        df = pd.read_excel(io.BytesIO(contents), engine='calamine')
+        df = pd.read_excel(io.BytesIO(contents), engine='openpyxl')
     except Exception:
         try:
             df = pd.read_csv(io.BytesIO(contents), sep='\t')
