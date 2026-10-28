@@ -72,7 +72,6 @@ def clasificar_turno_por_hora(hora_val):
 
     sec = h.hour * 3600 + h.minute * 60 + h.second
 
-    # Segundos precalculados para mayor velocidad
     if sec <= 21599:   # 05:59:59
         return "ENTRADA PRIMER TURNO"
     elif sec <= 23399: # 06:29:59
@@ -110,7 +109,7 @@ async def procesar_reporte(file: UploadFile = File(...)):
     
     df = None
     try:
-        df = pd.read_excel(io.BytesIO(contents))
+        df = pd.read_excel(io.BytesIO(contents), engine='openpyxl')
     except Exception:
         try:
             df = pd.read_csv(io.BytesIO(contents), sep='\t')
@@ -156,6 +155,7 @@ async def procesar_reporte(file: UploadFile = File(...)):
     if df['Fecha_Parsed'].dropna().empty:
         df['Fecha_Parsed'] = pd.to_datetime(df['Fecha_Clean'], errors='coerce')
 
+    # Vectorización y clasificación rápida de turnos
     df['Turno_Clasificado'] = df[col_hora].apply(clasificar_turno_por_hora)
     df = df.sort_values(by=[col_camion, 'Fecha_Parsed', col_hora], ascending=[True, True, True])
 
@@ -299,26 +299,34 @@ async def procesar_reporte(file: UploadFile = File(...)):
             start_block_row = row_pointer
             current_left_row = start_block_row
 
+            # Inserción optimizada de filas por bloque de fecha
+            rows_data = []
+            fills_data = []
             for _, row in df_fecha.iterrows():
                 es_bio = row['Es_Bionatur']
                 turno_nombre = row['Turno_Clasificado']
-                
-                for col_idx, col_name in enumerate(original_columns, 1):
+                row_vals = []
+                for col_name in original_columns:
                     val = row[col_name]
                     if col_name == col_fecha and pd.notna(val):
-                        val_str = fecha_actual.strftime('%Y-%m-%d')
+                        row_vals.append(fecha_actual.strftime('%Y-%m-%d'))
                     else:
-                        val_str = limpiar_valor(val)
+                        row_vals.append(limpiar_valor(val))
+                rows_data.append(row_vals)
+                fills_data.append(turno_fills.get(turno_nombre) if es_bio else None)
 
-                    cell = ws.cell(row=current_left_row, column=col_idx, value=val_str)
+            for r_idx, r_vals in enumerate(rows_data):
+                target_row = current_left_row + r_idx
+                active_fill = fills_data[r_idx]
+                for col_idx, val_str in enumerate(r_vals, 1):
+                    cell = ws.cell(row=target_row, column=col_idx, value=val_str)
                     cell.font = font_regular
                     cell.border = thin_border
-                    cell.alignment = align_center if col_name in [col_fecha, col_hora, col_camion] else align_left
-                    
-                    if es_bio and turno_nombre in turno_fills:
-                        cell.fill = turno_fills[turno_nombre]
+                    cell.alignment = align_center if original_columns[col_idx-1] in [col_fecha, col_hora, col_camion] else align_left
+                    if active_fill:
+                        cell.fill = active_fill
 
-                current_left_row += 1
+            current_left_row += len(rows_data)
 
             linea_nombre = ""
             if col_linea and not df_fecha[col_linea].dropna().empty:
