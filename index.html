@@ -109,7 +109,7 @@
                             <p id="file-size" class="text-[11px] text-slate-500">0 KB</p>
                         </div>
                     </div>
-                    <button id="remove-file-btn" class="text-slate-400 hover:text-red-500 transition-colors p-1 flex-shrink-0">
+                    <button id="remove-file-btn" class="text-slate-400 hover:text-red-500 transition-colors p-1 flex-shrink-0" title="Cancelar / Quitar archivo">
                         <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
                 </div>
@@ -196,6 +196,7 @@
         const alertMessage = document.getElementById('alert-message');
 
         let selectedFile = null;
+        let currentAbortController = null; // Controlador para cancelar la petición HTTP activa
 
         dropZone.addEventListener('click', (e) => {
             if (e.target.closest('#remove-file-btn')) return;
@@ -242,8 +243,16 @@
             fileInfo.classList.remove('hidden');
         }
 
+        // ACCIÓN AL CANCELAR / QUITAR ARCHIVO
         removeFileBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            
+            // Si hay un proceso de red activo, lo cancelamos inmediatamente
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
+            }
+
             resetFileInput();
             hideAlert();
         });
@@ -253,6 +262,9 @@
             fileInput.value = '';
             uploadContent.classList.remove('hidden');
             fileInfo.classList.add('hidden');
+            progressContainer.classList.add('hidden');
+            progressBar.style.width = '0%';
+            processBtn.disabled = false;
         }
 
         function showAlert(message, type) {
@@ -286,7 +298,9 @@
             processBtn.disabled = true;
             progressContainer.classList.remove('hidden');
             
-            // Animación de barra de carga fluida mientras el servidor procesa
+            // Creamos un nuevo controlador para esta petición
+            currentAbortController = new AbortController();
+
             let progressVal = 10;
             progressBar.style.width = progressVal + '%';
             progressPercent.textContent = progressVal + '%';
@@ -305,7 +319,8 @@
             try {
                 const response = await fetch('/procesar-reporte/', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    signal: currentAbortController.signal // Vinculamos la señal de cancelación
                 });
 
                 clearInterval(interval);
@@ -332,10 +347,15 @@
 
             } catch (err) {
                 clearInterval(interval);
-                showAlert(err.message, 'error');
+                if (err.name === 'AbortError') {
+                    showAlert('Proceso cancelado por el usuario.', 'warning');
+                } else {
+                    showAlert(err.message, 'error');
+                }
             } finally {
+                currentAbortController = null;
+                processBtn.disabled = false;
                 setTimeout(() => {
-                    processBtn.disabled = false;
                     progressContainer.classList.add('hidden');
                     progressBar.style.width = '0%';
                 }, 1500);
