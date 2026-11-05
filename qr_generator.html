@@ -200,20 +200,20 @@
 
         const dominioActual = window.location.origin;
 
-        // Función modificada: Ya no acepta rangos con guiones, solo únicos o varios separados por comas
         function obtenerListaBusqueda(entradatxt) {
             let elementos = [];
             entradatxt = entradatxt.trim();
 
             if (!entradatxt) return elementos;
 
+            // Separar estrictamente por comas y limpiar espacios
             if (entradatxt.includes(',')) {
                 elementos = entradatxt.split(',').map(e => e.trim()).filter(e => e.length > 0);
             } else {
                 elementos.push(entradatxt);
             }
 
-            return elementos;
+            return [...new Set(elementos)]; // Evitar términos duplicados en la entrada
         }
 
         async function procesarYGenerarQR() {
@@ -224,12 +224,12 @@
             if (terminosBusqueda.length === 0) {
                 gridContainer.innerHTML = `
                     <div class="p-8 text-center border-2 border-dashed border-amber-300 rounded-2xl bg-amber-50 text-amber-700 text-sm font-medium">
-                        <p>⚠️ Por favor escribe una unidad o número de credencial (Ej. TP-01, 15 o 6074352) antes de generar.</p>
+                        <p>⚠️ Por favor escribe una unidad o número de credencial válido (Ej. TP-01, 15 o 6074352).</p>
                     </div>`;
                 return;
             }
 
-            gridContainer.innerHTML = '<div class="p-8 text-center font-bold text-slate-500 text-sm"><i class="fa-solid fa-circle-notch animate-spin text-blue-600 mr-2"></i> Cargando datos desde la base de datos...</div>';
+            gridContainer.innerHTML = '<div class="p-8 text-center font-bold text-slate-500 text-sm"><i class="fa-solid fa-circle-notch animate-spin text-blue-600 mr-2"></i> Validando datos en la base de datos...</div>';
 
             let choferesData = [];
             try {
@@ -241,117 +241,127 @@
                 console.error("Error consultando Supabase:", e);
             }
 
-            let htmlAcumulado = '';
-            let listaGeneracionQR = []; 
+            let choferesEncontradosUnicos = [];
+            let credencialesOUnidadesProcesadas = new Set();
 
-            // Iteramos sobre cada término ingresado (ya sea unidad individual o credencial)
-            for (let index = 0; index < terminosBusqueda.length; index++) {
-                const termino = terminosBusqueda[index];
+            // Buscar coincidencias estrictas contra la base de datos para cada término ingresado
+            terminosBusqueda.forEach(termino => {
                 const terminoUpper = termino.toUpperCase();
                 const numLimpio = termino.replace(/\D/g, ''); 
                 const idTP = numLimpio ? `TP-${numLimpio.padStart(2, '0')}` : terminoUpper; 
 
-                // Buscamos coincidencias tanto por camión/unidad como por número de credencial exacta
-                const choferesEncontrados = choferesData.filter(c => {
+                choferesData.forEach(c => {
                     const idCamionDB = c.id_camion ? String(c.id_camion).trim().toUpperCase() : '';
                     const numDB = idCamionDB.replace(/\D/g, '');
                     const credDB = c.credencial_chofer ? String(c.credencial_chofer).trim() : '';
 
-                    const coincideCamion = idCamionDB === terminoUpper || idCamionDB === idTP || (numDB !== '' && numDB === numLimpio);
+                    // Validar si coincide exactamente con la unidad o con la credencial
+                    const coincideCamion = idCamionDB === terminoUpper || idCamionDB === idTP || (numDB !== '' && numDB === numLimpio && !termino.includes('-'));
                     const coincideCredencial = credDB === termino.trim();
 
-                    return coincideCamion || coincideCredencial;
+                    if (coincideCamion || coincideCredencial) {
+                        // Crear una llave única para evitar duplicados si la misma persona/unidad se cruza por credencial y camión
+                        const llaveUnica = `${credDB}-${idCamionDB}`;
+                        if (!credencialesOUnidadesProcesadas.has(llaveUnica)) {
+                            credencialesOUnidadesProcesadas.add(llaveUnica);
+                            choferesEncontradosUnicos.push(c);
+                        }
+                    }
+                });
+            });
+
+            // Si no se encontró absolutamente nada válido en la base de datos (como letras aleatorias "a" o datos falsos)
+            if (choferesEncontradosUnicos.length === 0) {
+                gridContainer.innerHTML = `
+                    <div class="p-8 text-center border-2 border-dashed border-red-300 rounded-2xl bg-red-50 text-red-700 text-sm font-medium">
+                        <p>❌ No se encontraron registros válidos en la base de datos para los valores ingresados. Verifica que el número de unidad (ej. TP-10) o credencial sea correcto.</p>
+                    </div>`;
+                return;
+            }
+
+            let htmlAcumulado = '';
+            let listaGeneracionQR = []; 
+
+            choferesEncontradosUnicos.forEach((chofer, index) => {
+                const nombreOperador = chofer.nombre_chofer || 'OPERADOR DE UNIDAD';
+                const credencialOperador = chofer.credencial_chofer || 'N/A';
+                const unidadAsignada = chofer.id_camion ? String(chofer.id_camion).trim().toUpperCase() : 'N/A';
+                let fotoUrl = null;
+
+                if (credencialOperador && credencialOperador !== 'N/A') {
+                    fotoUrl = `/static/Fotos_Op/${credencialOperador}.jpg`;
+                }
+
+                const cardId = `qr-card-${index}`;
+                const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(unidadAsignada)}&credencial=${encodeURIComponent(credencialOperador)}`;
+
+                listaGeneracionQR.push({
+                    elementId: cardId,
+                    url: urlFinal
                 });
 
-                const listaAMostrar = choferesEncontrados.length > 0 ? choferesEncontrados : [{
-                    nombre_chofer: 'OPERADOR DE UNIDAD',
-                    credencial_chofer: termino.trim(),
-                    id_camion: idTP
-                }];
+                const fotoHtml = fotoUrl 
+                    ? `<img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-48 h-60 sm:w-64 sm:h-80 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-slate-400 text-sm font-bold text-center p-2\\'>[ SIN FOTO ]</div>';" alt="Foto ${nombreOperador}" class="w-48 h-60 sm:w-64 sm:h-80 object-cover rounded-2xl border-4 border-slate-300 shadow-md">`
+                    : `<div class="w-48 h-60 sm:w-64 sm:h-80 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-slate-400 text-sm font-bold text-center p-2">[ SIN FOTO ]</div>`;
 
-                listaAMostrar.forEach((chofer, idxSub) => {
-                    const nombreOperador = chofer.nombre_chofer || 'OPERADOR DE UNIDAD';
-                    const credencialOperador = chofer.credencial_chofer || 'N/A';
-                    const unidadAsignada = chofer.id_camion ? String(chofer.id_camion).trim().toUpperCase() : idTP;
-                    let fotoUrl = null;
-
-                    if (credencialOperador && credencialOperador !== 'N/A') {
-                        fotoUrl = `/static/Fotos_Op/${credencialOperador}.jpg`;
-                    }
-
-                    const cardId = `qr-card-${index}-${idxSub}`;
-                    
-                    // Enlace único con unidad y credencial específica del operador
-                    const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(unidadAsignada)}&credencial=${encodeURIComponent(credencialOperador)}`;
-
-                    listaGeneracionQR.push({
-                        elementId: cardId,
-                        url: urlFinal
-                    });
-
-                    const fotoHtml = fotoUrl 
-                        ? `<img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-48 h-60 sm:w-64 sm:h-80 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-slate-400 text-sm font-bold text-center p-2\\'>[ SIN FOTO ]</div>';" alt="Foto ${nombreOperador}" class="w-48 h-60 sm:w-64 sm:h-80 object-cover rounded-2xl border-4 border-slate-300 shadow-md">`
-                        : `<div class="w-48 h-60 sm:w-64 sm:h-80 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-slate-400 text-sm font-bold text-center p-2">[ SIN FOTO ]</div>`;
-
-                    htmlAcumulado += `
-                        <div class="page-card bg-white rounded-2xl border-2 border-slate-300 shadow-md flex flex-col justify-between mx-auto my-4 w-full p-4 sm:p-6">
-                            
-                            <div class="w-full border-b-4 border-red-600 pb-3 flex justify-between items-center">
-                                <div class="flex items-center space-x-3">
-                                    <img src="/static/Iusa-logotipo.jpg" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'bg-red-600 text-white font-black px-4 py-2 rounded-lg text-xl tracking-widest uppercase shadow\\'>IUSA</div>';" alt="Logo IUSA" class="h-10 sm:h-12 object-contain">
-                                </div>
-                                <div class="text-right">
-                                    <h3 class="font-black text-slate-900 text-base sm:text-xl tracking-tight">TRANSPORTE DE PERSONAL</h3>
-                                    <p class="text-[10px] sm:text-xs text-slate-500 font-extrabold uppercase tracking-widest">FICHA OFICIAL DE OPERADOR</p>
-                                </div>
+                htmlAcumulado += `
+                    <div class="page-card bg-white rounded-2xl border-2 border-slate-300 shadow-md flex flex-col justify-between mx-auto my-4 w-full p-4 sm:p-6">
+                        
+                        <div class="w-full border-b-4 border-red-600 pb-3 flex justify-between items-center">
+                            <div class="flex items-center space-x-3">
+                                <img src="/static/Iusa-logotipo.jpg" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'bg-red-600 text-white font-black px-4 py-2 rounded-lg text-xl tracking-widest uppercase shadow\\'>IUSA</div>';" alt="Logo IUSA" class="h-10 sm:h-12 object-contain">
                             </div>
-
-                            <div class="w-full grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 items-center my-4 bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200">
-                                <div class="md:col-span-5 flex justify-center items-center">
-                                    ${fotoHtml}
-                                </div>
-
-                                <div class="md:col-span-7 text-left space-y-3 sm:space-y-4 pl-0 md:pl-2">
-                                    <div>
-                                        <span class="bg-red-100 text-red-700 text-[10px] sm:text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
-                                            OPERADOR ASIGNADO
-                                        </span>
-                                        <h2 class="font-black text-slate-900 text-2xl sm:text-3xl uppercase leading-tight tracking-wide mt-2">
-                                            ${nombreOperador}
-                                        </h2>
-                                    </div>
-
-                                    <div class="space-y-1.5 sm:space-y-2 border-t border-slate-200 pt-3">
-                                        <p class="text-slate-600 text-sm sm:text-base">
-                                            <strong class="text-slate-800">Número de Credencial:</strong><br>
-                                            <span class="font-mono text-slate-900 font-black text-xl sm:text-2xl">${credencialOperador}</span>
-                                        </p>
-                                        <p class="text-slate-600 text-sm sm:text-base">
-                                            <strong class="text-slate-800">Unidad Asignada:</strong><br>
-                                            <span class="font-extrabold text-blue-900 text-2xl sm:text-3xl">${unidadAsignada}</span>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="my-2 flex flex-col items-center">
-                                <div id="${cardId}" class="p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-md"></div>
-                            </div>
-
-                            <div class="w-full text-center">
-                                <div class="bg-slate-900 text-white py-2.5 sm:py-3 rounded-xl font-black text-xl sm:text-3xl tracking-wider shadow-md mb-2">
-                                    UNIDAD ${unidadAsignada}
-                                </div>
-                                <p class="text-[11px] sm:text-xs text-slate-600 font-semibold px-4">Escanea este código QR con la cámara de tu celular para calificar el servicio o reportar alguna incidencia.</p>
-                            </div>
-
-                            <div class="w-full border-t border-slate-200 pt-2 text-center text-[10px] sm:text-xs text-slate-400 font-medium">
-                                Sistema de Control Logístico y Evaluaciones &bull; IUSA Transportes
+                            <div class="text-right">
+                                <h3 class="font-black text-slate-900 text-base sm:text-xl tracking-tight">TRANSPORTE DE PERSONAL</h3>
+                                <p class="text-[10px] sm:text-xs text-slate-500 font-extrabold uppercase tracking-widest">FICHA OFICIAL DE OPERADOR</p>
                             </div>
                         </div>
-                    `;
-                });
-            }
+
+                        <div class="w-full grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 items-center my-4 bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200">
+                            <div class="md:col-span-5 flex justify-center items-center">
+                                ${fotoHtml}
+                            </div>
+
+                            <div class="md:col-span-7 text-left space-y-3 sm:space-y-4 pl-0 md:pl-2">
+                                <div>
+                                    <span class="bg-red-100 text-red-700 text-[10px] sm:text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                                        OPERADOR ASIGNADO
+                                    </span>
+                                    <h2 class="font-black text-slate-900 text-2xl sm:text-3xl uppercase leading-tight tracking-wide mt-2">
+                                        ${nombreOperador}
+                                    </h2>
+                                </div>
+
+                                <div class="space-y-1.5 sm:space-y-2 border-t border-slate-200 pt-3">
+                                    <p class="text-slate-600 text-sm sm:text-base">
+                                        <strong class="text-slate-800">Número de Credencial:</strong><br>
+                                        <span class="font-mono text-slate-900 font-black text-xl sm:text-2xl">${credencialOperador}</span>
+                                    </p>
+                                    <p class="text-slate-600 text-sm sm:text-base">
+                                        <strong class="text-slate-800">Unidad Asignada:</strong><br>
+                                        <span class="font-extrabold text-blue-900 text-2xl sm:text-3xl">${unidadAsignada}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="my-2 flex flex-col items-center">
+                            <div id="${cardId}" class="p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-md"></div>
+                        </div>
+
+                        <div class="w-full text-center">
+                            <div class="bg-slate-900 text-white py-2.5 sm:py-3 rounded-xl font-black text-xl sm:text-3xl tracking-wider shadow-md mb-2">
+                                UNIDAD ${unidadAsignada}
+                            </div>
+                            <p class="text-[11px] sm:text-xs text-slate-600 font-semibold px-4">Escanea este código QR con la cámara de tu celular para calificar el servicio o reportar alguna incidencia.</p>
+                        </div>
+
+                        <div class="w-full border-t border-slate-200 pt-2 text-center text-[10px] sm:text-xs text-slate-400 font-medium">
+                            Sistema de Control Logístico y Evaluaciones &bull; IUSA Transportes
+                        </div>
+                    </div>
+                `;
+            });
 
             gridContainer.innerHTML = htmlAcumulado;
 
