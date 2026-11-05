@@ -75,7 +75,7 @@
             <div class="hidden md:flex items-center space-x-2 text-xs sm:text-sm font-medium">
                 <a href="/" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Reportes Operativos</a>
                 <a href="/reportes" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Buzón de Evaluaciones</a>
-                <a href="/qr_generator" class="px-3 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition">QR</a>
+                <a href="/qr_generator" class="px-3 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow-md transition"> Generador de QR</a>
                 
                 <!-- BOTÓN CERRAR SESIÓN -->
                 <button onclick="cerrarSesion()" class="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition text-xs shadow flex items-center space-x-1 ml-2">
@@ -101,7 +101,7 @@
                 Buzón de Evaluaciones
             </a>
             <a href="/qr_generator" class="block px-4 py-2.5 rounded-xl text-sm font-medium bg-blue-600 text-white shadow transition">
-                Generador de QRs
+                Generador de QR
             </a>
             <div class="pt-2 border-t border-slate-800">
                 <button onclick="cerrarSesion()" class="w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold bg-red-600 hover:bg-red-700 text-white transition flex items-center space-x-2 shadow">
@@ -116,23 +116,22 @@
         
         <div class="mb-6 no-print">
             <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Generador de Identificaciones y QRs de Operadores</h1>
-            <p class="text-xs sm:text-sm text-slate-500">Genera e imprime la ficha oficial institucional que necesites.</p>
+            <p class="text-xs sm:text-sm text-slate-500">Genera e imprime la ficha oficial institucional por unidad o número de credencial.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             <!-- PANEL DE CONTROL -->
             <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 no-print">
-                <h2 class="text-base font-bold text-slate-800 border-b pb-2">Selección de Unidades</h2>
+                <h2 class="text-base font-bold text-slate-800 border-b pb-2">Selección de Unidades o Credenciales</h2>
                 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Unidad o Rango de Unidades:</label>
-                    <input type="text" id="input-unidades" value="" placeholder="Ej. TP-12  ó  12  ó  01-04" 
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Unidad(es) o Credencial(es):</label>
+                    <input type="text" id="input-unidades" value="" placeholder="Ej. TP-01, 15, 6074352" 
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold">
                     <p class="text-[11px] text-slate-400 mt-1.5 leading-tight space-y-0.5">
-                        • Único: <code class="text-slate-700">TP-12</code> o <code class="text-slate-700">12</code><br>
-                        • Rango: <code class="text-slate-700">01-04</code><br>
-                        • Varios: <code class="text-slate-700">01, 03, TP-05</code>
+                        • Único / Varios: <code class="text-slate-700">01, 15, TP-03, 6074352</code><br>
+                        *(Ingresa números de camión, formato TP o número de credencial separados por comas).*
                     </p>
                 </div>
 
@@ -154,7 +153,7 @@
                 <div id="printable-grid" class="space-y-6">
                     <div id="empty-state" class="p-8 sm:p-12 text-center border-2 border-dashed border-slate-300 rounded-2xl bg-white text-slate-400">
                         <i class="fa-solid fa-file-lines text-4xl block mb-2 text-slate-300"></i>
-                        <p class="font-medium text-xs sm:text-sm">Ingresa la unidad o rango deseado a la izquierda y haz clic en <strong>"Generar Identificaciones QR"</strong>.</p>
+                        <p class="font-medium text-xs sm:text-sm">Ingresa la unidad o credencial deseada a la izquierda y haz clic en <strong>"Generar Identificaciones QR"</strong>.</p>
                     </div>
                 </div>
             </div>
@@ -169,7 +168,6 @@
     </footer>
 
     <script>
-        // Función para controlar el menú móvil desplegable
         function toggleMenuMovil() {
             const menu = document.getElementById('menu-movil');
             const icono = document.getElementById('icono-menu');
@@ -202,42 +200,31 @@
 
         const dominioActual = window.location.origin;
 
-        function obtenerListaUnidades(entradatxt) {
-            let unidades = [];
+        // Función modificada: Ya no acepta rangos con guiones, solo únicos o varios separados por comas
+        function obtenerListaBusqueda(entradatxt) {
+            let elementos = [];
             entradatxt = entradatxt.trim();
 
-            if (!entradatxt) return unidades;
+            if (!entradatxt) return elementos;
 
             if (entradatxt.includes(',')) {
-                unidades = entradatxt.split(',').map(u => u.trim()).filter(u => u.length > 0);
-            } 
-            else if (entradatxt.includes('-') && !entradatxt.toUpperCase().startsWith('TP-')) {
-                const partes = entradatxt.split('-');
-                const inicio = parseInt(partes[0].replace(/\D/g, ''), 10);
-                const fin = parseInt(partes[1].replace(/\D/g, ''), 10);
-
-                if (!isNaN(inicio) && !isNaN(fin) && inicio <= fin) {
-                    for (let i = inicio; i <= fin; i++) {
-                        unidades.push(i < 10 ? '0' + i : '' + i);
-                    }
-                }
-            } 
-            else {
-                unidades.push(entradatxt);
+                elementos = entradatxt.split(',').map(e => e.trim()).filter(e => e.length > 0);
+            } else {
+                elementos.push(entradatxt);
             }
 
-            return unidades;
+            return elementos;
         }
 
         async function procesarYGenerarQR() {
             const inputVal = document.getElementById('input-unidades').value;
-            const unidades = obtenerListaUnidades(inputVal);
+            const terminosBusqueda = obtenerListaBusqueda(inputVal);
             const gridContainer = document.getElementById('printable-grid');
 
-            if (unidades.length === 0) {
+            if (terminosBusqueda.length === 0) {
                 gridContainer.innerHTML = `
                     <div class="p-8 text-center border-2 border-dashed border-amber-300 rounded-2xl bg-amber-50 text-amber-700 text-sm font-medium">
-                        <p>⚠️ Por favor escribe una unidad o rango (Ej. TP-12, 12 o 01-04) antes de generar.</p>
+                        <p>⚠️ Por favor escribe una unidad o número de credencial (Ej. TP-01, 15 o 6074352) antes de generar.</p>
                     </div>`;
                 return;
             }
@@ -255,40 +242,48 @@
             }
 
             let htmlAcumulado = '';
-            let listaGeneracionQR = []; // Para almacenar los datos de renderizado de QR
+            let listaGeneracionQR = []; 
 
-            for (let index = 0; index < unidades.length; index++) {
-                const uni = unidades[index];
-                const numLimpio = uni.replace(/\D/g, ''); 
-                const idTP = numLimpio ? `TP-${numLimpio.padStart(2, '0')}` : uni.toUpperCase(); 
+            // Iteramos sobre cada término ingresado (ya sea unidad individual o credencial)
+            for (let index = 0; index < terminosBusqueda.length; index++) {
+                const termino = terminosBusqueda[index];
+                const terminoUpper = termino.toUpperCase();
+                const numLimpio = termino.replace(/\D/g, ''); 
+                const idTP = numLimpio ? `TP-${numLimpio.padStart(2, '0')}` : terminoUpper; 
 
+                // Buscamos coincidencias tanto por camión/unidad como por número de credencial exacta
                 const choferesEncontrados = choferesData.filter(c => {
-                    if (!c.id_camion) return false;
-                    const idCamionDB = String(c.id_camion).trim().toUpperCase();
+                    const idCamionDB = c.id_camion ? String(c.id_camion).trim().toUpperCase() : '';
                     const numDB = idCamionDB.replace(/\D/g, '');
-                    return idCamionDB === uni.toUpperCase() || idCamionDB === idTP || (numDB !== '' && numDB === numLimpio);
+                    const credDB = c.credencial_chofer ? String(c.credencial_chofer).trim() : '';
+
+                    const coincideCamion = idCamionDB === terminoUpper || idCamionDB === idTP || (numDB !== '' && numDB === numLimpio);
+                    const coincideCredencial = credDB === termino.trim();
+
+                    return coincideCamion || coincideCredencial;
                 });
 
                 const listaAMostrar = choferesEncontrados.length > 0 ? choferesEncontrados : [{
                     nombre_chofer: 'OPERADOR DE UNIDAD',
-                    credencial_chofer: 'N/A'
+                    credencial_chofer: termino.trim(),
+                    id_camion: idTP
                 }];
 
                 listaAMostrar.forEach((chofer, idxSub) => {
                     const nombreOperador = chofer.nombre_chofer || 'OPERADOR DE UNIDAD';
                     const credencialOperador = chofer.credencial_chofer || 'N/A';
+                    const unidadAsignada = chofer.id_camion ? String(chofer.id_camion).trim().toUpperCase() : idTP;
                     let fotoUrl = null;
 
-                    if (chofer.credencial_chofer && chofer.credencial_chofer !== 'N/A') {
-                        fotoUrl = `/static/Fotos_Op/${String(chofer.credencial_chofer).trim()}.jpg`;
+                    if (credencialOperador && credencialOperador !== 'N/A') {
+                        fotoUrl = `/static/Fotos_Op/${credencialOperador}.jpg`;
                     }
 
                     const cardId = `qr-card-${index}-${idxSub}`;
                     
                     // Enlace único con unidad y credencial específica del operador
-                    const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(idTP)}&credencial=${encodeURIComponent(credencialOperador)}`;
+                    const urlFinal = `${dominioActual}/evaluacion?id_camion=${encodeURIComponent(unidadAsignada)}&credencial=${encodeURIComponent(credencialOperador)}`;
 
-                    // Guardamos para generar el QR después de pintar el HTML
                     listaGeneracionQR.push({
                         elementId: cardId,
                         url: urlFinal
@@ -333,7 +328,7 @@
                                         </p>
                                         <p class="text-slate-600 text-sm sm:text-base">
                                             <strong class="text-slate-800">Unidad Asignada:</strong><br>
-                                            <span class="font-extrabold text-blue-900 text-2xl sm:text-3xl">${idTP}</span>
+                                            <span class="font-extrabold text-blue-900 text-2xl sm:text-3xl">${unidadAsignada}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -345,23 +340,21 @@
 
                             <div class="w-full text-center">
                                 <div class="bg-slate-900 text-white py-2.5 sm:py-3 rounded-xl font-black text-xl sm:text-3xl tracking-wider shadow-md mb-2">
-                                    UNIDAD ${idTP}
+                                    UNIDAD ${unidadAsignada}
                                 </div>
                                 <p class="text-[11px] sm:text-xs text-slate-600 font-semibold px-4">Escanea este código QR con la cámara de tu celular para calificar el servicio o reportar alguna incidencia.</p>
                             </div>
 
                             <div class="w-full border-t border-slate-200 pt-2 text-center text-[10px] sm:text-xs text-slate-400 font-medium">
-                                Sistema generador de reportes IUSA &bull; IUSA Transportes
+                                Sistema de Control Logístico y Evaluaciones &bull; IUSA Transportes
                             </div>
                         </div>
                     `;
                 });
             }
 
-            // Insertamos todo el HTML generado en la página
             gridContainer.innerHTML = htmlAcumulado;
 
-            // Renderizamos los códigos QR de forma limpia usando el arreglo recolectado
             listaGeneracionQR.forEach(item => {
                 const contenedorQR = document.getElementById(item.elementId);
                 if (contenedorQR) {
