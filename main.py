@@ -131,6 +131,7 @@ async def procesar_reporte(file: UploadFile = File(...)):
     col_hora = next((c for c in df.columns if 'hora' in str(c).lower()), None)
     col_camion = next((c for c in df.columns if 'clavecamion' in str(c).lower() or 'camion' in str(c).lower() or 'unidad' in str(c).lower()), None)
     col_cc = next((c for c in df.columns if 'centrodecostos' in str(c).lower() or 'centro_costos' in str(c).lower()), None)
+    col_total = next((c for c in df.columns if str(c).lower() == 'total'), None)
 
     if not col_fecha or not col_hora or not col_camion:
         raise HTTPException(
@@ -155,7 +156,6 @@ async def procesar_reporte(file: UploadFile = File(...)):
     if df['Fecha_Parsed'].dropna().empty:
         df['Fecha_Parsed'] = pd.to_datetime(df['Fecha_Clean'], errors='coerce')
 
-    # Vectorización y clasificación rápida de turnos
     df['Turno_Clasificado'] = df[col_hora].apply(clasificar_turno_por_hora)
     df = df.sort_values(by=[col_camion, 'Fecha_Parsed', col_hora], ascending=[True, True, True])
 
@@ -293,13 +293,12 @@ async def procesar_reporte(file: UploadFile = File(...)):
         bionatur_col_start = summary_col_start + 3
 
         for fecha_p in fechas_unicas:
-            df_fecha = df_camion[df_camion['Fecha_Parsed'] == fecha_p]
+            df_fecha = df_camion[df_camion['Fecha_Parsed'] == fecha_p].copy()
             fecha_actual = fecha_p.date()
             
             start_block_row = row_pointer
             current_left_row = start_block_row
 
-            # Inserción optimizada de filas por bloque de fecha
             rows_data = []
             fills_data = []
             for _, row in df_fecha.iterrows():
@@ -336,10 +335,13 @@ async def procesar_reporte(file: UploadFile = File(...)):
             if col_poblacion and not df_fecha[col_poblacion].dropna().empty:
                 poblacion_valor = limpiar_valor(df_fecha[col_poblacion].dropna().iloc[0])
 
-            conteo_turnos_general = df_fecha['Turno_Clasificado'].value_counts()
-            df_fecha_bionatur = df_fecha[df_fecha['Es_Bionatur'] == True]
-            conteo_turnos_bionatur = df_fecha_bionatur['Turno_Clasificado'].value_counts()
+            df_fecha_bionatur = df_fecha[df_fecha['Es_Bionatur'] == True].copy()
+            
+            if col_total:
+                df_fecha[col_total] = pd.to_numeric(df_fecha[col_total], errors='coerce').fillna(0)
+                df_fecha_bionatur[col_total] = pd.to_numeric(df_fecha_bionatur[col_total], errors='coerce').fillna(0)
 
+            # --- TABLAS SUPERIORES ORIGINALES (CONTEO POR TURNO) ---
             c_hdr1 = ws.cell(row=start_block_row, column=summary_col_start, value="CONCEPTO / TURNO GENERAL")
             v_hdr1 = ws.cell(row=start_block_row, column=summary_col_start + 1, value="CONTEO")
             for h_cell in [c_hdr1, v_hdr1]:
@@ -353,6 +355,9 @@ async def procesar_reporte(file: UploadFile = File(...)):
                 h_cell.fill = bionatur_header_fill
                 h_cell.font = font_header
                 h_cell.alignment = align_center
+
+            conteo_turnos_general = df_fecha['Turno_Clasificado'].value_counts()
+            conteo_turnos_bionatur = df_fecha_bionatur['Turno_Clasificado'].value_counts()
 
             summary_items_gen = [
                 ("LINEA", linea_nombre),
@@ -372,10 +377,8 @@ async def procesar_reporte(file: UploadFile = File(...)):
             for t in turnos_orden:
                 cnt_g = int(conteo_turnos_general.get(t, 0))
                 cnt_b = int(conteo_turnos_bionatur.get(t, 0))
-                
                 summary_items_gen.append((t, cnt_g))
                 summary_items_bio.append((t, cnt_b))
-                
                 total_gen += cnt_g
                 total_bio += cnt_b
 
@@ -386,14 +389,11 @@ async def procesar_reporte(file: UploadFile = File(...)):
             for concept, val in summary_items_gen:
                 c_cell = ws.cell(row=s_row, column=summary_col_start, value=concept)
                 v_cell = ws.cell(row=s_row, column=summary_col_start + 1, value=val)
-
                 c_cell.border = thin_border
                 v_cell.border = thin_border
-
                 if concept in turno_fills:
                     c_cell.fill = turno_fills[concept]
                     v_cell.fill = turno_fills[concept]
-
                 if concept == "TOTAL REGISTROS":
                     c_cell.fill = total_fill
                     v_cell.fill = total_fill
@@ -403,22 +403,19 @@ async def procesar_reporte(file: UploadFile = File(...)):
                 else:
                     c_cell.font = font_bold if s_row <= start_block_row + 4 else font_regular
                     v_cell.font = font_regular
-                    v_cell.alignment = align_left if isinstance(val, str) else align_right
-
+                    c_cell.alignment = align_left if isinstance(val, str) else align_right
+                    v_cell.alignment = align_right if not isinstance(val, str) else align_right
                 s_row += 1
 
-            s_row = start_block_row + 1
+            s_row_b = start_block_row + 1
             for concept, val in summary_items_bio:
-                c_cell = ws.cell(row=s_row, column=bionatur_col_start, value=concept)
-                v_cell = ws.cell(row=s_row, column=bionatur_col_start + 1, value=val)
-
+                c_cell = ws.cell(row=s_row_b, column=bionatur_col_start, value=concept)
+                v_cell = ws.cell(row=s_row_b, column=bionatur_col_start + 1, value=val)
                 c_cell.border = thin_border
                 v_cell.border = thin_border
-
                 if concept in turno_fills:
                     c_cell.fill = turno_fills[concept]
                     v_cell.fill = turno_fills[concept]
-
                 if concept == "TOTAL BIONATUR":
                     c_cell.fill = bionatur_total_fill
                     v_cell.fill = bionatur_total_fill
@@ -426,14 +423,177 @@ async def procesar_reporte(file: UploadFile = File(...)):
                     v_cell.font = font_bold
                     c_cell.alignment = align_right
                 else:
-                    c_cell.font = font_bold if s_row <= start_block_row + 4 else font_regular
+                    c_cell.font = font_bold if s_row_b <= start_block_row + 4 else font_regular
                     v_cell.font = font_regular
-                    v_cell.alignment = align_left if isinstance(val, str) else align_right
+                    c_cell.alignment = align_left if isinstance(val, str) else align_right
+                    v_cell.alignment = align_right if not isinstance(val, str) else align_right
+                s_row_b += 1
 
-                s_row += 1
+            # --- TABLAS INFERIORES ADICIONALES (TURNO / POBLACIÓN CON SUBTOTALES POR TURNO) ---
+            pop_row_start = max(s_row, s_row_b) + 1
+            bionatur_pop_col_start = summary_col_start + 4
 
-            max_rows = max(len(df_fecha), len(summary_items_gen) + 1)
-            row_pointer = start_block_row + max_rows + 3
+            # Encabezados Tabla General
+            ws.cell(row=pop_row_start, column=summary_col_start, value="TURNO / POBLACIÓN (GENERAL)").fill = summary_header_fill
+            ws.cell(row=pop_row_start, column=summary_col_start + 1, value="PERSONAS").fill = summary_header_fill
+            ws.cell(row=pop_row_start, column=summary_col_start + 2, value="SUMA TOTAL").fill = summary_header_fill
+            for col_i in range(summary_col_start, summary_col_start + 3):
+                cell = ws.cell(row=pop_row_start, column=col_i)
+                cell.font = font_header
+                cell.alignment = align_center
+
+            # Encabezados Tabla Bionatur
+            ws.cell(row=pop_row_start, column=bionatur_pop_col_start, value="TURNO / POBLACIÓN (BIONATUR)").fill = bionatur_header_fill
+            ws.cell(row=pop_row_start, column=bionatur_pop_col_start + 1, value="PERSONAS").fill = bionatur_header_fill
+            ws.cell(row=pop_row_start, column=bionatur_pop_col_start + 2, value="SUMA TOTAL").fill = bionatur_header_fill
+            for col_i in range(bionatur_pop_col_start, bionatur_pop_col_start + 3):
+                cell = ws.cell(row=pop_row_start, column=col_i)
+                cell.font = font_header
+                cell.alignment = align_center
+
+            r_p_gen = pop_row_start + 1
+            suma_gran_total_gen = 0
+            personas_gran_total_gen = 0
+
+            # Desglose General (Turno -> Población con subtotal por turno)
+            for t in turnos_orden:
+                df_t = df_fecha[df_fecha['Turno_Clasificado'] == t]
+                if not df_t.empty:
+                    c_tur = ws.cell(row=r_p_gen, column=summary_col_start, value=t)
+                    ws.cell(row=r_p_gen, column=summary_col_start + 1, value="")
+                    ws.cell(row=r_p_gen, column=summary_col_start + 2, value="")
+                    for col_i in range(summary_col_start, summary_col_start + 3):
+                        cell = ws.cell(row=r_p_gen, column=col_i)
+                        cell.border = thin_border
+                        if t in turno_fills:
+                            cell.fill = turno_fills[t]
+                    c_tur.font = font_bold
+                    r_p_gen += 1
+
+                    sub_personas = 0
+                    sub_suma = 0
+                    if col_poblacion and col_total:
+                        grp_gen = df_t.groupby(col_poblacion).agg(
+                            cnt=(col_total, 'count'),
+                            tot=(col_total, 'sum')
+                        ).reset_index()
+
+                        for _, r_data in grp_gen.iterrows():
+                            c1 = ws.cell(row=r_p_gen, column=summary_col_start, value=f"   {r_data[col_poblacion]}")
+                            c2 = ws.cell(row=r_p_gen, column=summary_col_start + 1, value=int(r_data['cnt']))
+                            c3 = ws.cell(row=r_p_gen, column=summary_col_start + 2, value=float(r_data['tot']))
+                            for cell in [c1, c2, c3]:
+                                cell.border = thin_border
+                                cell.font = font_regular
+                            c1.alignment = align_left
+                            c2.alignment = align_right
+                            c3.alignment = align_right
+                            sub_personas += int(r_data['cnt'])
+                            sub_suma += float(r_data['tot'])
+                            r_p_gen += 1
+
+                    # Fila de Subtotal por Turno
+                    c_sub_lbl = ws.cell(row=r_p_gen, column=summary_col_start, value=f"   SUBTOTAL {t}")
+                    c_sub_cnt = ws.cell(row=r_p_gen, column=summary_col_start + 1, value=sub_personas)
+                    c_sub_tot = ws.cell(row=r_p_gen, column=summary_col_start + 2, value=sub_suma)
+                    for cell in [c_sub_lbl, c_sub_cnt, c_sub_tot]:
+                        cell.border = thin_border
+                        cell.font = font_bold
+                        cell.fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+                    c_sub_lbl.alignment = align_left
+                    c_sub_cnt.alignment = align_right
+                    c_sub_tot.alignment = align_right
+                    
+                    personas_gran_total_gen += sub_personas
+                    suma_gran_total_gen += sub_suma
+                    r_p_gen += 1
+
+            # Fila Total General
+            c1_tot = ws.cell(row=r_p_gen, column=summary_col_start, value="TOTAL GENERAL")
+            c2_tot = ws.cell(row=r_p_gen, column=summary_col_start + 1, value=personas_gran_total_gen)
+            c3_tot = ws.cell(row=r_p_gen, column=summary_col_start + 2, value=suma_gran_total_gen)
+            for cell in [c1_tot, c2_tot, c3_tot]:
+                cell.fill = total_fill
+                cell.font = font_bold
+                cell.border = thin_border
+            c1_tot.alignment = align_right
+            c2_tot.alignment = align_right
+            c3_tot.alignment = align_right
+            r_p_gen += 1
+
+            # Desglose Bionatur (Turno -> Población con subtotal por turno)
+            r_p_bio = pop_row_start + 1
+            suma_gran_total_bio = 0
+            personas_gran_total_bio = 0
+
+            for t in turnos_orden:
+                df_t_bio = df_fecha_bionatur[df_fecha_bionatur['Turno_Clasificado'] == t]
+                if not df_t_bio.empty:
+                    c_tur = ws.cell(row=r_p_bio, column=bionatur_pop_col_start, value=t)
+                    ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 1, value="")
+                    ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 2, value="")
+                    for col_i in range(bionatur_pop_col_start, bionatur_pop_col_start + 3):
+                        cell = ws.cell(row=r_p_bio, column=col_i)
+                        cell.border = thin_border
+                        if t in turno_fills:
+                            cell.fill = turno_fills[t]
+                    c_tur.font = font_bold
+                    r_p_bio += 1
+
+                    sub_personas_b = 0
+                    sub_suma_b = 0
+                    if col_poblacion and col_total:
+                        grp_bio = df_t_bio.groupby(col_poblacion).agg(
+                            cnt=(col_total, 'count'),
+                            tot=(col_total, 'sum')
+                        ).reset_index()
+
+                        for _, r_data in grp_bio.iterrows():
+                            c1 = ws.cell(row=r_p_bio, column=bionatur_pop_col_start, value=f"   {r_data[col_poblacion]}")
+                            c2 = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 1, value=int(r_data['cnt']))
+                            c3 = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 2, value=float(r_data['tot']))
+                            for cell in [c1, c2, c3]:
+                                cell.border = thin_border
+                                cell.font = font_regular
+                            c1.alignment = align_left
+                            c2.alignment = align_right
+                            c3.alignment = align_right
+                            sub_personas_b += int(r_data['cnt'])
+                            sub_suma_b += float(r_data['tot'])
+                            r_p_bio += 1
+
+                    # Fila de Subtotal por Turno (Bionatur)
+                    c_sub_lbl = ws.cell(row=r_p_bio, column=bionatur_pop_col_start, value=f"   SUBTOTAL {t}")
+                    c_sub_cnt = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 1, value=sub_personas_b)
+                    c_sub_tot = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 2, value=sub_suma_b)
+                    for cell in [c_sub_lbl, c_sub_cnt, c_sub_tot]:
+                        cell.border = thin_border
+                        cell.font = font_bold
+                        cell.fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+                    c_sub_lbl.alignment = align_left
+                    c_sub_cnt.alignment = align_right
+                    c_sub_tot.alignment = align_right
+
+                    personas_gran_total_bio += sub_personas_b
+                    suma_gran_total_bio += sub_suma_b
+                    r_p_bio += 1
+
+            # Fila Total Bionatur
+            c1_tot_b = ws.cell(row=r_p_bio, column=bionatur_pop_col_start, value="TOTAL BIONATUR")
+            c2_tot_b = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 1, value=personas_gran_total_bio)
+            c3_tot_b = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 2, value=suma_gran_total_bio)
+            for cell in [c1_tot_b, c2_tot_b, c3_tot_b]:
+                cell.fill = bionatur_total_fill
+                cell.font = font_bold
+                cell.border = thin_border
+            c1_tot_b.alignment = align_right
+            c2_tot_b.alignment = align_right
+            c3_tot_b.alignment = align_right
+            r_p_bio += 1
+
+            # Separación estricta y limpia basada en la fecha para que cada día tenga su propio bloque independiente
+            max_pop_end = max(r_p_gen, r_p_bio)
+            row_pointer = max(current_left_row, max_pop_end) + 4
 
         for col in ws.columns:
             max_len = 0
