@@ -154,7 +154,6 @@
     </footer>
 
     <script>
-        // Función para el control del menú móvil desplegable
         function toggleMenuMovil() {
             const menu = document.getElementById('menu-movil');
             const icono = document.getElementById('icono-menu');
@@ -188,9 +187,21 @@
         let reportesGlobal = [];
         let usuariosMap = {};
 
+        // Función auxiliar para asegurar el formato institucional "TP-XX"
+        function formatearUnidad(val) {
+            if (!val) return '--';
+            const str = String(val).trim().toUpperCase();
+            if (str.startsWith('TP-')) return str;
+            // Si viene solo el número (ej. "12" o "2"), lo formatea como "TP-12" o "TP-02"
+            const numLimpio = str.replace(/\D/g, '');
+            if (numLimpio) {
+                return `TP-${numLimpio.padStart(2, '0')}`;
+            }
+            return str;
+        }
+
         async function cargarReportes() {
             try {
-                // 1. Cargar catálogo de usuarios (credenciales_validas) extrayendo nombre_usuario
                 const { data: usuariosData } = await clientSupabase.from('credenciales_validas').select('*');
                 if (usuariosData) {
                     usuariosData.forEach(u => {
@@ -199,7 +210,6 @@
                     });
                 }
 
-                // 2. Cargar reportes recibidos
                 const { data, error } = await clientSupabase
                     .from('reportes_recibidos')
                     .select('*')
@@ -251,6 +261,7 @@
             data.forEach(r => {
                 const credencial = String(r.credencial_emisor || '').trim();
                 const nombreEmisor = usuariosMap[credencial] || 'Desconocido';
+                const unidadFormateada = formatearUnidad(r.id_camion);
                 
                 const tipoEnvioRaw = String(r.tipo_envio || '');
                 const esPuntuacion = tipoEnvioRaw.toLowerCase().includes('calificación') || (r.puntuacion && r.puntuacion > 0 && !tipoEnvioRaw.includes('ruta') && !tipoEnvioRaw.includes('estado') && !tipoEnvioRaw.includes('mal'));
@@ -280,9 +291,9 @@
                     <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                         <td class="p-4 font-mono font-bold text-slate-900">${r.folio_reporte || 'N/A'}</td>
                         <td class="p-4 text-slate-600">${fechaFormateada}</td>
-                        <td class="p-4 font-bold text-slate-800">Camión ${r.id_camion || '--'}</td>
+                        <td class="p-4 font-bold text-blue-900">${unidadFormateada}</td>
                         <td class="p-4 font-mono font-semibold">${credencial}</td>
-                        <td class="p-4 font-bold text-blue-900">${nombreEmisor}</td>
+                        <td class="p-4 font-bold text-slate-800">${nombreEmisor}</td>
                         <td class="p-4">${badgeTipo}</td>
                         <td class="p-4">${estrellasHtml}</td>
                         <td class="p-4 text-slate-600 max-w-xs truncate" title="${r.comentario || ''}">${r.comentario || r.tipo_envio || '--'}</td>
@@ -307,7 +318,7 @@
                 const folio = String(r.folio_reporte || '').toLowerCase();
                 const credencial = String(r.credencial_emisor || '').toLowerCase();
                 const nombre = String(usuariosMap[r.credencial_emisor] || '').toLowerCase();
-                const camion = String(r.id_camion || '').toLowerCase();
+                const camion = formatearUnidad(r.id_camion).toLowerCase();
                 const comentario = String(r.comentario || '').toLowerCase();
 
                 const coincideTexto = folio.includes(textoBusqueda) || 
