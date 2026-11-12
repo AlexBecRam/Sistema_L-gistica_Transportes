@@ -155,9 +155,9 @@
         let calificacionSeleccionada = 0;
         let html5QrCode = null;
 
-        // Función auxiliar para asegurar el formato institucional completo "TP-XX"
+        // Asegura el formato institucional completo "TP-XX"
         function formatearUnidadCompleta(val) {
-            if (!val) return '02';
+            if (!val) return 'TP-02';
             const str = String(val).trim().toUpperCase();
             if (str.startsWith('TP-')) return str;
             const numLimpio = str.replace(/\D/g, '');
@@ -169,53 +169,44 @@
 
         async function cargarDatosUnidad() {
             const idTPFinal = formatearUnidadCompleta(idCamionParam);
-            const numLimpio = idCamionParam.replace(/\D/g, '');
-            
             document.getElementById('num-camion').textContent = idTPFinal;
 
             try {
-                const { data, error } = await clientSupabase.from('choferes_unidades').select('*');
+                // Consulta directa en servidor aprovechando llaves y columnas indexadas
+                let query = clientSupabase
+                    .from('choferes_unidades')
+                    .select('*')
+                    .eq('unidad', idTPFinal);
 
-                if (!error && data) {
-                    const choferEncontrado = data.find(c => {
-                        if (!c.id_camion) return false;
-                        const idDB = String(c.id_camion).trim().toUpperCase();
-                        const numDB = idDB.replace(/\D/g, '');
-                        const coincideCamion = idDB === idCamionParam.toUpperCase() || idDB === idTPFinal || (numDB !== '' && numDB === numLimpio);
-                        
-                        if (credencialParam) {
-                            const credDB = String(c.credencial_chofer || '').trim();
-                            return coincideCamion && credDB === credencialParam.trim();
-                        }
-                        
-                        return coincideCamion;
-                    });
+                if (credencialParam) {
+                    query = query.eq('credencial_chofer', credencialParam.trim());
+                }
 
-                    if (choferEncontrado) {
-                        choferActual = choferEncontrado;
-                        // Si se encuentra en la base de datos, mostramos exactamente el id_camion registrado (ej. "TP-12")
-                        if (choferEncontrado.id_camion) {
-                            document.getElementById('num-camion').textContent = choferEncontrado.id_camion;
-                        }
-                        document.getElementById('nombre-chofer').textContent = choferEncontrado.nombre_chofer || 'Información no registrada';
-                        document.getElementById('credencial-chofer').textContent = choferEncontrado.credencial_chofer || 'N/A';
-                        document.getElementById('empresa-chofer').textContent = choferEncontrado.empresa || 'IUSA';
-                        document.getElementById('badge-estatus').textContent = 'Conectado';
-                        document.getElementById('badge-estatus').className = 'self-end sm:absolute sm:top-3 sm:right-3 bg-emerald-100 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
+                const { data, error } = await query;
 
-                        if (choferEncontrado.credencial_chofer) {
-                            const fotoUrl = `/static/Fotos_Op/${String(choferEncontrado.credencial_chofer).trim()}.jpg`;
-                            document.getElementById('contenedor-foto').innerHTML = `
-                                <img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-20 h-24 sm:w-16 sm:h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1\\'>[ SIN FOTO ]</div>';" alt="Foto Operador" class="w-20 h-24 sm:w-16 sm:h-20 object-cover rounded-xl border border-slate-300 shadow-sm">
-                            `;
-                        }
-                    } else {
-                        document.getElementById('nombre-chofer').textContent = 'Operador no especificado';
-                        document.getElementById('credencial-chofer').textContent = credencialParam || '--';
-                        document.getElementById('empresa-chofer').textContent = '--';
-                        document.getElementById('badge-estatus').textContent = 'Unidad Compartida';
-                        document.getElementById('badge-estatus').className = 'self-end sm:absolute sm:top-3 sm:right-3 bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
+                if (!error && data && data.length > 0) {
+                    const choferEncontrado = data[0];
+                    choferActual = choferEncontrado;
+                    
+                    document.getElementById('num-camion').textContent = choferEncontrado.unidad;
+                    document.getElementById('nombre-chofer').textContent = choferEncontrado.nombre_chofer || 'Información no registrada';
+                    document.getElementById('credencial-chofer').textContent = choferEncontrado.credencial_chofer || 'N/A';
+                    document.getElementById('empresa-chofer').textContent = choferEncontrado.empresa || 'IUSA';
+                    document.getElementById('badge-estatus').textContent = 'Conectado';
+                    document.getElementById('badge-estatus').className = 'self-end sm:absolute sm:top-3 sm:right-3 bg-emerald-100 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
+
+                    if (choferEncontrado.credencial_chofer) {
+                        const fotoUrl = `/static/Fotos_Op/${String(choferEncontrado.credencial_chofer).trim()}.jpg`;
+                        document.getElementById('contenedor-foto').innerHTML = `
+                            <img src="${fotoUrl}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-20 h-24 sm:w-16 sm:h-20 bg-slate-200 rounded-xl border border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-bold text-center p-1\\'>[ SIN FOTO ]</div>';" alt="Foto Operador" class="w-20 h-24 sm:w-16 sm:h-20 object-cover rounded-xl border border-slate-300 shadow-sm">
+                        `;
                     }
+                } else {
+                    document.getElementById('nombre-chofer').textContent = 'Operador no especificado';
+                    document.getElementById('credencial-chofer').textContent = credencialParam || '--';
+                    document.getElementById('empresa-chofer').textContent = '--';
+                    document.getElementById('badge-estatus').textContent = 'Unidad Compartida';
+                    document.getElementById('badge-estatus').className = 'self-end sm:absolute sm:top-3 sm:right-3 bg-amber-100 text-amber-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]';
                 }
             } catch (err) {
                 console.error("Error consultando operador:", err);
@@ -328,11 +319,11 @@
             alerta.classList.add('hidden');
 
             try {
-                // 1. VALIDACIÓN: Verificar si la credencial existe en credenciales_validas
+                // 1. VALIDACIÓN: Consulta directa mediante llave primaria 'credencial_emisor'
                 const { data: credencialesValidas, error: errorBusqueda } = await clientSupabase
                     .from('credenciales_validas')
                     .select('*')
-                    .eq('numero_credencial', credencialUsuario);
+                    .eq('credencial_emisor', credencialUsuario);
 
                 if (errorBusqueda) {
                     throw new Error('Error al conectar con la base de datos para validar la credencial.');
@@ -345,14 +336,14 @@
                 const usuarioAutorizado = credencialesValidas[0];
                 const pinRegistrado = String(usuarioAutorizado.pin_seguridad || '').trim();
 
-                // 2. VALIDACIÓN / REGISTRO AUTOMÁTICO DE PIN
+                // 2. VALIDACIÓN / REGISTRO AUTOMÁTICO DE PIN USANDO LLAVE PRIMARIA
                 if (pinRegistrado === '' || pinRegistrado === 'null' || pinRegistrado === 'undefined') {
                     btn.textContent = 'Registrando PIN por primera vez...';
                     
                     const { error: errorUpdatePin } = await clientSupabase
                         .from('credenciales_validas')
                         .update({ pin_seguridad: pinSeguridad })
-                        .eq('numero_credencial', credencialUsuario);
+                        .eq('credencial_emisor', credencialUsuario);
 
                     if (errorUpdatePin) {
                         throw new Error('No se pudo registrar el PIN de seguridad inicial en la base de datos.');
@@ -363,7 +354,7 @@
                     }
                 }
 
-                // 3. PROCEDEMOS A INSERTAR EL REPORTE
+                // 3. INSERCIÓN EN 'reportes_recibidos' CON COLUMNA 'unidad'
                 btn.textContent = 'Guardando registro...';
 
                 const { error: errorInsert } = await clientSupabase
@@ -372,7 +363,7 @@
                         {
                             folio_reporte: 'FOLIO-' + Math.floor(100000 + Math.random() * 900000),
                             fecha_hora: new Date().toISOString(),
-                            id_camion: document.getElementById('num-camion').textContent,
+                            unidad: document.getElementById('num-camion').textContent,
                             credencial_emisor: credencialUsuario,
                             tipo_envio: tipoIncidenciaFinal,
                             puntuacion: calificacionFinal,

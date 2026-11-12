@@ -103,7 +103,7 @@
         <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
             <div class="w-full sm:w-96 relative">
                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
-                <input type="text" id="input-busqueda" onkeyup="filtrarTabla()" placeholder="Buscar por Folio, Credencial, Nombre o Camión..." 
+                <input type="text" id="input-busqueda" onkeyup="filtrarTabla()" placeholder="Buscar por Folio, Credencial, Nombre o Unidad..." 
                        class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none">
             </div>
             
@@ -187,12 +187,11 @@
         let reportesGlobal = [];
         let usuariosMap = {};
 
-        // Función auxiliar para asegurar el formato institucional "TP-XX"
+        // Asegura el formato institucional "TP-XX"
         function formatearUnidad(val) {
             if (!val) return '--';
             const str = String(val).trim().toUpperCase();
             if (str.startsWith('TP-')) return str;
-            // Si viene solo el número (ej. "12" o "2"), lo formatea como "TP-12" o "TP-02"
             const numLimpio = str.replace(/\D/g, '');
             if (numLimpio) {
                 return `TP-${numLimpio.padStart(2, '0')}`;
@@ -202,10 +201,11 @@
 
         async function cargarReportes() {
             try {
+                // Consulta adaptada a la llave primaria 'credencial_emisor' en credenciales_validas
                 const { data: usuariosData } = await clientSupabase.from('credenciales_validas').select('*');
                 if (usuariosData) {
                     usuariosData.forEach(u => {
-                        const cred = String(u.numero_credencial || '').trim();
+                        const cred = String(u.credencial_emisor || '').trim();
                         usuariosMap[cred] = u.nombre_usuario || 'Colaborador IUSA';
                     });
                 }
@@ -261,7 +261,8 @@
             data.forEach(r => {
                 const credencial = String(r.credencial_emisor || '').trim();
                 const nombreEmisor = usuariosMap[credencial] || 'Desconocido';
-                const unidadFormateada = formatearUnidad(r.id_camion);
+                // Lectura correcta de la columna 'unidad'
+                const unidadFormateada = formatearUnidad(r.unidad);
                 
                 const tipoEnvioRaw = String(r.tipo_envio || '');
                 const esPuntuacion = tipoEnvioRaw.toLowerCase().includes('calificación') || (r.puntuacion && r.puntuacion > 0 && !tipoEnvioRaw.includes('ruta') && !tipoEnvioRaw.includes('estado') && !tipoEnvioRaw.includes('mal'));
@@ -318,7 +319,7 @@
                 const folio = String(r.folio_reporte || '').toLowerCase();
                 const credencial = String(r.credencial_emisor || '').toLowerCase();
                 const nombre = String(usuariosMap[r.credencial_emisor] || '').toLowerCase();
-                const camion = formatearUnidad(r.id_camion).toLowerCase();
+                const camion = formatearUnidad(r.unidad).toLowerCase();
                 const comentario = String(r.comentario || '').toLowerCase();
 
                 const coincideTexto = folio.includes(textoBusqueda) || 
