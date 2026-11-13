@@ -65,37 +65,53 @@ def parse_hora(hora_val):
             pass
     return None
 
-def clasificar_turno_por_hora(hora_val):
+# --- CLASIFICACIÓN 1: TABLAS SUPERIORES (10 HORARIOS ORIGINALES) ---
+def clasificar_turno_superior(hora_val):
     h = parse_hora(hora_val)
     if h is None:
         return "OTRO TURNO / FUERA DE RANGO"
 
     sec = h.hour * 3600 + h.minute * 60 + h.second
 
-    if 22800 <= sec <= 28799:       # 6:20 a 7:59
-        return "ENTRADA TURNO GENERAL"
-    elif 45000 <= sec <= 50399:    # 12:30 a 13:59
-        return "ENTRADA SEGUNDO TURNO"
-    elif 63000 <= sec <= 70200:    # 17:30 a 19:30
-        return "SALIDA TURNO GENERAL"
-    elif 77400 <= sec <= 84600:    # 21:30 a 23:30
-        return "SALIDA SEGUNDO TURNO"
-    
-    # Turnos de respaldo y fuera de rango
-    if sec <= 21599:   # 05:59:59
+    if sec <= 21599:             # Hasta 05:59:59
         return "ENTRADA PRIMER TURNO"
-    elif sec <= 23399: # 06:29:59
+    elif sec <= 23399:           # 06:00:00 a 06:29:59
         return "SALIDA TERCER TURNO"
-    elif sec <= 59399: # 16:29:59
+    elif 23400 <= sec <= 28799:  # 06:30:00 a 07:59:59
+        return "ENTRADA TURNO GENERAL"
+    elif 45000 <= sec <= 50399:  # 12:30:00 a 13:59:59
+        return "ENTRADA SEGUNDO TURNO"
+    elif 50400 <= sec <= 59399:  # 14:00:00 a 16:29:59
         return "SALIDA PRIMER TURNO"
-    elif sec <= 62999: # 17:29:59
+    elif 59400 <= sec <= 62999:  # 16:30:00 a 17:29:59
         return "ENTRADA TURNO LARGO"
-    elif sec <= 66599: # 18:29:59
+    elif 63000 <= sec <= 66599:  # 17:30:00 a 18:29:59
         return "SALIDA TURNO LARGO"
-    elif sec <= 73199: # 20:19:59
+    elif 66600 <= sec <= 73199:  # 18:30:00 a 20:19:59
         return "SALIDA TURNO GENERAL"
-    elif sec <= 79199: # 21:59:59
+    elif 73200 <= sec <= 79199:  # 20:20:00 a 21:59:59
         return "ENTRADA TERCER TURNO"
+    elif 79200 <= sec <= 84600:  # 22:00:00 a 23:30:00
+        return "SALIDA SEGUNDO TURNO"
+    else:
+        return "OTRO TURNO / FUERA DE RANGO"
+
+# --- CLASIFICACIÓN 2: TABLAS INFERIORES (4 HORARIOS NUEVOS INDEPENDIENTES) ---
+def clasificar_turno_inferior(hora_val):
+    h = parse_hora(hora_val)
+    if h is None:
+        return "OTRO TURNO / FUERA DE RANGO"
+
+    sec = h.hour * 3600 + h.minute * 60 + h.second
+
+    if 22800 <= sec <= 28799:       # 06:20:00 a 07:59:59
+        return "ENTRADA TURNO GENERAL"
+    elif 45000 <= sec <= 50399:    # 12:30:00 a 13:59:59
+        return "ENTRADA SEGUNDO TURNO"
+    elif 63000 <= sec <= 70200:    # 17:30:00 a 19:30:00
+        return "SALIDA TURNO GENERAL"
+    elif 77400 <= sec <= 84600:    # 21:30:00 a 23:30:00
+        return "SALIDA SEGUNDO TURNO"
     else:
         return "OTRO TURNO / FUERA DE RANGO"
 
@@ -162,10 +178,13 @@ async def procesar_reporte(file: UploadFile = File(...)):
     if df['Fecha_Parsed'].dropna().empty:
         df['Fecha_Parsed'] = pd.to_datetime(df['Fecha_Clean'], errors='coerce')
 
-    df['Turno_Clasificado'] = df[col_hora].apply(clasificar_turno_por_hora)
+    # Aplicamos ambas clasificaciones de forma independiente
+    df['Turno_Superior'] = df[col_hora].apply(clasificar_turno_superior)
+    df['Turno_Inferior'] = df[col_hora].apply(clasificar_turno_inferior)
+    
     df = df.sort_values(by=[col_camion, 'Fecha_Parsed', col_hora], ascending=[True, True, True])
 
-    original_columns = [c for c in df.columns if c not in ['Es_Bionatur', 'Fecha_Clean', 'Fecha_Parsed', 'Turno_Clasificado']]
+    original_columns = [c for c in df.columns if c not in ['Es_Bionatur', 'Fecha_Clean', 'Fecha_Parsed', 'Turno_Superior', 'Turno_Inferior']]
 
     wb = Workbook()
     wb.remove(wb.active)
@@ -207,11 +226,18 @@ async def procesar_reporte(file: UploadFile = File(...)):
     align_left = Alignment(horizontal='left', vertical='center')
     align_right = Alignment(horizontal='right', vertical='center')
 
-    turnos_orden = [
+    # Lista de los 10 turnos originales para las tablas superiores
+    turnos_orden_superior = [
         "ENTRADA PRIMER TURNO", "SALIDA TERCER TURNO", "ENTRADA TURNO GENERAL",
         "ENTRADA SEGUNDO TURNO", "SALIDA PRIMER TURNO", "ENTRADA TURNO LARGO",
         "SALIDA TURNO LARGO", "SALIDA TURNO GENERAL", "ENTRADA TERCER TURNO", 
         "SALIDA SEGUNDO TURNO"
+    ]
+
+    # Lista de los 4 turnos nuevos independientes para las tablas inferiores
+    turnos_orden_inferior = [
+        "ENTRADA TURNO GENERAL", "ENTRADA SEGUNDO TURNO",
+        "SALIDA TURNO GENERAL", "SALIDA SEGUNDO TURNO"
     ]
 
     # --- 1. HOJA INICIAL DE RESUMEN GLOBAL ---
@@ -310,7 +336,7 @@ async def procesar_reporte(file: UploadFile = File(...)):
             fills_data = []
             for _, row in df_fecha.iterrows():
                 es_bio = row['Es_Bionatur']
-                turno_nombre = row['Turno_Clasificado']
+                turno_nombre = row['Turno_Superior']
                 row_vals = []
                 for col_name in original_columns:
                     val = row[col_name]
@@ -348,19 +374,19 @@ async def procesar_reporte(file: UploadFile = File(...)):
                 df_fecha[col_total] = pd.to_numeric(df_fecha[col_total], errors='coerce').fillna(0)
                 df_fecha_bionatur[col_total] = pd.to_numeric(df_fecha_bionatur[col_total], errors='coerce').fillna(0)
 
-            # Detectar dinámicamente si hay registros fuera de rango en esta fecha específica
-            conteo_turnos_general = df_fecha['Turno_Clasificado'].value_counts()
-            conteo_turnos_bionatur = df_fecha_bionatur['Turno_Clasificado'].value_counts()
+            # --- TABLAS SUPERIORES (10 TURNOS ORIGINALES) ---
+            conteo_sup_gen = df_fecha['Turno_Superior'].value_counts()
+            conteo_sup_bio = df_fecha_bionatur['Turno_Superior'].value_counts()
             
-            hay_fuera_de_rango_gen = conteo_turnos_general.get("OTRO TURNO / FUERA DE RANGO", 0) > 0
-            hay_fuera_de_rango_bio = conteo_turnos_bionatur.get("OTRO TURNO / FUERA DE RANGO", 0) > 0
+            hay_fuera_sup = (
+                conteo_sup_gen.get("OTRO TURNO / FUERA DE RANGO", 0) > 0 or
+                conteo_sup_bio.get("OTRO TURNO / FUERA DE RANGO", 0) > 0
+            )
 
-            # Lista dinámica de turnos a mostrar en las tablas superiores
-            lista_turnos_activos = list(turnos_orden)
-            if hay_fuera_de_rango_gen or hay_fuera_de_rango_bio:
-                lista_turnos_activos.append("OTRO TURNO / FUERA DE RANGO")
+            lista_turnos_superiores = list(turnos_orden_superior)
+            if hay_fuera_sup:
+                lista_turnos_superiores.append("OTRO TURNO / FUERA DE RANGO")
 
-            # --- TABLAS SUPERIORES ---
             c_hdr1 = ws.cell(row=start_block_row, column=summary_col_start, value="CONCEPTO / TURNO GENERAL")
             v_hdr1 = ws.cell(row=start_block_row, column=summary_col_start + 1, value="CONTEO")
             for h_cell in [c_hdr1, v_hdr1]:
@@ -390,9 +416,9 @@ async def procesar_reporte(file: UploadFile = File(...)):
 
             total_gen = 0
             total_bio = 0
-            for t in lista_turnos_activos:
-                cnt_g = int(conteo_turnos_general.get(t, 0))
-                cnt_b = int(conteo_turnos_bionatur.get(t, 0))
+            for t in lista_turnos_superiores:
+                cnt_g = int(conteo_sup_gen.get(t, 0))
+                cnt_b = int(conteo_sup_bio.get(t, 0))
                 summary_items_gen.append((t, cnt_g))
                 summary_items_bio.append((t, cnt_b))
                 total_gen += cnt_g
@@ -420,7 +446,7 @@ async def procesar_reporte(file: UploadFile = File(...)):
                     c_cell.font = font_bold if s_row <= start_block_row + 4 else font_regular
                     v_cell.font = font_regular
                     c_cell.alignment = align_left if isinstance(val, str) else align_right
-                    v_cell.alignment = align_right if not isinstance(val, str) else align_right
+                    v_cell.alignment = align_right
                 s_row += 1
 
             s_row_b = start_block_row + 1
@@ -442,12 +468,24 @@ async def procesar_reporte(file: UploadFile = File(...)):
                     c_cell.font = font_bold if s_row_b <= start_block_row + 4 else font_regular
                     v_cell.font = font_regular
                     c_cell.alignment = align_left if isinstance(val, str) else align_right
-                    v_cell.alignment = align_right if not isinstance(val, str) else align_right
+                    v_cell.alignment = align_right
                 s_row_b += 1
 
-            # --- TABLAS INFERIORES ADICIONALES (TURNO / POBLACIÓN CON SUBTOTALES) ---
+            # --- TABLAS INFERIORES ADICIONALES (4 HORARIOS NUEVOS INDEPENDIENTES) ---
             pop_row_start = max(s_row, s_row_b) + 1
             bionatur_pop_col_start = summary_col_start + 4
+
+            conteo_inf_gen = df_fecha['Turno_Inferior'].value_counts()
+            conteo_inf_bio = df_fecha_bionatur['Turno_Inferior'].value_counts()
+
+            hay_fuera_inf = (
+                conteo_inf_gen.get("OTRO TURNO / FUERA DE RANGO", 0) > 0 or
+                conteo_inf_bio.get("OTRO TURNO / FUERA DE RANGO", 0) > 0
+            )
+
+            lista_turnos_inferiores = list(turnos_orden_inferior)
+            if hay_fuera_inf:
+                lista_turnos_inferiores.append("OTRO TURNO / FUERA DE RANGO")
 
             # Encabezados Tabla General
             ws.cell(row=pop_row_start, column=summary_col_start, value="TURNO / POBLACIÓN (GENERAL)").fill = summary_header_fill
@@ -471,9 +509,8 @@ async def procesar_reporte(file: UploadFile = File(...)):
             suma_gran_total_gen = 0
             personas_gran_total_gen = 0
 
-            # Desglose General (Turno -> Población con subtotal por turno)
-            for t in lista_turnos_activos:
-                df_t = df_fecha[df_fecha['Turno_Clasificado'] == t]
+            for t in lista_turnos_inferiores:
+                df_t = df_fecha[df_fecha['Turno_Inferior'] == t]
                 if not df_t.empty:
                     c_tur = ws.cell(row=r_p_gen, column=summary_col_start, value=t)
                     ws.cell(row=r_p_gen, column=summary_col_start + 1, value="")
@@ -508,7 +545,6 @@ async def procesar_reporte(file: UploadFile = File(...)):
                             sub_suma += float(r_data['tot'])
                             r_p_gen += 1
 
-                    # Fila de Subtotal por Turno
                     c_sub_lbl = ws.cell(row=r_p_gen, column=summary_col_start, value=f"   SUBTOTAL {t}")
                     c_sub_cnt = ws.cell(row=r_p_gen, column=summary_col_start + 1, value=sub_personas)
                     c_sub_tot = ws.cell(row=r_p_gen, column=summary_col_start + 2, value=sub_suma)
@@ -524,7 +560,6 @@ async def procesar_reporte(file: UploadFile = File(...)):
                     suma_gran_total_gen += sub_suma
                     r_p_gen += 1
 
-            # Fila Total General
             c1_tot = ws.cell(row=r_p_gen, column=summary_col_start, value="TOTAL GENERAL")
             c2_tot = ws.cell(row=r_p_gen, column=summary_col_start + 1, value=personas_gran_total_gen)
             c3_tot = ws.cell(row=r_p_gen, column=summary_col_start + 2, value=suma_gran_total_gen)
@@ -537,13 +572,12 @@ async def procesar_reporte(file: UploadFile = File(...)):
             c3_tot.alignment = align_right
             r_p_gen += 1
 
-            # Desglose Bionatur (Turno -> Población con subtotal por turno)
             r_p_bio = pop_row_start + 1
             suma_gran_total_bio = 0
             personas_gran_total_bio = 0
 
-            for t in lista_turnos_activos:
-                df_t_bio = df_fecha_bionatur[df_fecha_bionatur['Turno_Clasificado'] == t]
+            for t in lista_turnos_inferiores:
+                df_t_bio = df_fecha_bionatur[df_fecha_bionatur['Turno_Inferior'] == t]
                 if not df_t_bio.empty:
                     c_tur = ws.cell(row=r_p_bio, column=bionatur_pop_col_start, value=t)
                     ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 1, value="")
@@ -578,7 +612,6 @@ async def procesar_reporte(file: UploadFile = File(...)):
                             sub_suma_b += float(r_data['tot'])
                             r_p_bio += 1
 
-                    # Fila de Subtotal por Turno (Bionatur)
                     c_sub_lbl = ws.cell(row=r_p_bio, column=bionatur_pop_col_start, value=f"   SUBTOTAL {t}")
                     c_sub_cnt = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 1, value=sub_personas_b)
                     c_sub_tot = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 2, value=sub_suma_b)
@@ -594,7 +627,6 @@ async def procesar_reporte(file: UploadFile = File(...)):
                     suma_gran_total_bio += sub_suma_b
                     r_p_bio += 1
 
-            # Fila Total Bionatur
             c1_tot_b = ws.cell(row=r_p_bio, column=bionatur_pop_col_start, value="TOTAL BIONATUR")
             c2_tot_b = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 1, value=personas_gran_total_bio)
             c3_tot_b = ws.cell(row=r_p_bio, column=bionatur_pop_col_start + 2, value=suma_gran_total_bio)
