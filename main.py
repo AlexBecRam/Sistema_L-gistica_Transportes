@@ -124,6 +124,14 @@ def limpiar_valor(val):
         return str(val)
     return str(val)
 
+def formatear_rango_fechas(fechas_serie):
+    fechas_validas = sorted(fechas_serie.dropna().dt.date.unique())
+    if not fechas_validas:
+        return ""
+    if len(fechas_validas) == 1:
+        return fechas_validas[0].strftime('%Y-%m-%d')
+    return f"{fechas_validas[0].strftime('%Y-%m-%d')} al {fechas_validas[-1].strftime('%Y-%m-%d')}"
+
 @app.post("/procesar-reporte/")
 @app.post("/procesar_excel")
 async def procesar_reporte(file: UploadFile = File(...)):
@@ -307,7 +315,150 @@ async def procesar_reporte(file: UploadFile = File(...)):
         cell.font = font_bold
         cell.border = thin_border
 
-    # --- 2. GENERACIÓN DE HOJAS POR CAMIÓN ---
+    # --- 2. HOJA APARTE: CONSOLIDADO POR TURNO (GENERAL Y BIONATUR DE TODOS LOS CAMIONES) ---
+    ws_turnos = wb.create_sheet(title="CONSOLIDADO POR TURNO", index=1)
+    ws_turnos.views.sheetView[0].showGridLines = True
+
+    ws_turnos.row_dimensions[1].height = 28
+    ws_turnos.merge_cells("A1:E1")
+    t_title = ws_turnos["A1"]
+    t_title.value = "CONSOLIDADO GENERAL DE TURNOS (TODOS LOS CAMIONES)"
+    t_title.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
+    t_title.fill = global_fill
+    t_title.alignment = align_center
+
+    df_valido = df[
+        df[col_camion].notna() &
+        (df[col_camion].astype(str).str.strip() != "") &
+        df['Fecha_Parsed'].notna() &
+        df[col_hora].notna() &
+        (df[col_hora].astype(str).str.strip() != "")
+    ].copy()
+
+    df_todo_bio = df_valido[df_valido['Es_Bionatur'] == True]
+
+    lineas_unicas = []
+    if col_linea and not df_valido[col_linea].dropna().empty:
+        lineas_unicas = [limpiar_valor(x) for x in df_valido[col_linea].dropna().unique() if limpiar_valor(x)]
+    linea_global_str = ", ".join(lineas_unicas) if len(lineas_unicas) <= 3 else "VARIAS LÍNEAS"
+
+    poblaciones_unicas = []
+    if col_poblacion and not df_valido[col_poblacion].dropna().empty:
+        poblaciones_unicas = [limpiar_valor(x) for x in df_valido[col_poblacion].dropna().unique() if limpiar_valor(x)]
+    poblacion_global_str = ", ".join(poblaciones_unicas) if len(poblaciones_unicas) <= 3 else "VARIAS POBLACIONES"
+
+    rango_fechas_global = formatear_rango_fechas(df_valido['Fecha_Parsed'])
+
+    conteo_global_g = df_valido['Turno_Superior'].value_counts()
+    conteo_global_b = df_todo_bio['Turno_Superior'].value_counts()
+
+    hay_fuera_global = (
+        conteo_global_g.get("OTRO TURNO / FUERA DE RANGO", 0) > 0 or
+        conteo_global_b.get("OTRO TURNO / FUERA DE RANGO", 0) > 0
+    )
+
+    turnos_global_activos = list(turnos_orden_superior)
+    if hay_fuera_global:
+        turnos_global_activos.append("OTRO TURNO / FUERA DE RANGO")
+
+    t_row_start = 3
+    ws_turnos.row_dimensions[t_row_start].height = 22
+    gen_col = 1
+    bio_col = 4
+
+    h_g1 = ws_turnos.cell(row=t_row_start, column=gen_col, value="CONCEPTO / TURNO GENERAL")
+    h_g2 = ws_turnos.cell(row=t_row_start, column=gen_col + 1, value="CONTEO")
+    for cell in [h_g1, h_g2]:
+        cell.fill = summary_header_fill
+        cell.font = font_header
+        cell.alignment = align_center
+        cell.border = thin_border
+
+    h_b1 = ws_turnos.cell(row=t_row_start, column=bio_col, value="CONCEPTO / TURNO BIONATUR")
+    h_b2 = ws_turnos.cell(row=t_row_start, column=bio_col + 1, value="CONTEO")
+    for cell in [h_b1, h_b2]:
+        cell.fill = bionatur_header_fill
+        cell.font = font_header
+        cell.alignment = align_center
+        cell.border = thin_border
+
+    filas_globales_g = [
+        ("LINEA", linea_global_str),
+        ("FECHA", rango_fechas_global),
+        ("POBLACIÓN", poblacion_global_str),
+        ("CAMIÓN", "TODOS"),
+    ]
+    filas_globales_b = [
+        ("LINEA", linea_global_str),
+        ("FECHA", rango_fechas_global),
+        ("POBLACIÓN", poblacion_global_str),
+        ("CAMIÓN", "TODOS"),
+    ]
+
+    total_g_global = 0
+    total_b_global = 0
+    for t_name in turnos_global_activos:
+        c_g = int(conteo_global_g.get(t_name, 0))
+        c_b = int(conteo_global_b.get(t_name, 0))
+        filas_globales_g.append((t_name, c_g))
+        filas_globales_b.append((t_name, c_b))
+        total_g_global += c_g
+        total_b_global += c_b
+
+    filas_globales_g.append(("TOTAL REGISTROS", total_g_global))
+    filas_globales_b.append(("TOTAL BIONATUR", total_b_global))
+
+    curr_tg = t_row_start + 1
+    for idx_f, (concepto, valor) in enumerate(filas_globales_g):
+        row_num = curr_tg + idx_f
+        ws_turnos.row_dimensions[row_num].height = 20
+        c_cell = ws_turnos.cell(row=row_num, column=gen_col, value=concepto)
+        v_cell = ws_turnos.cell(row=row_num, column=gen_col + 1, value=valor)
+        c_cell.border = thin_border
+        v_cell.border = thin_border
+
+        if concepto in turno_fills:
+            c_cell.fill = turno_fills[concepto]
+            v_cell.fill = turno_fills[concepto]
+
+        if concepto == "TOTAL REGISTROS":
+            c_cell.fill = total_fill
+            v_cell.fill = total_fill
+            c_cell.font = font_bold
+            v_cell.font = font_bold
+            c_cell.alignment = align_right
+            v_cell.alignment = align_right
+        else:
+            c_cell.font = font_bold if idx_f < 4 else font_regular
+            v_cell.font = font_regular
+            c_cell.alignment = align_left if isinstance(valor, str) else align_right
+            v_cell.alignment = align_right
+
+    for idx_f, (concepto, valor) in enumerate(filas_globales_b):
+        row_num = curr_tg + idx_f
+        c_cell = ws_turnos.cell(row=row_num, column=bio_col, value=concepto)
+        v_cell = ws_turnos.cell(row=row_num, column=bio_col + 1, value=valor)
+        c_cell.border = thin_border
+        v_cell.border = thin_border
+
+        if concepto in turno_fills:
+            c_cell.fill = turno_fills[concepto]
+            v_cell.fill = turno_fills[concepto]
+
+        if concepto == "TOTAL BIONATUR":
+            c_cell.fill = bionatur_total_fill
+            v_cell.fill = bionatur_total_fill
+            c_cell.font = font_bold
+            v_cell.font = font_bold
+            c_cell.alignment = align_right
+            v_cell.alignment = align_right
+        else:
+            c_cell.font = font_bold if idx_f < 4 else font_regular
+            v_cell.font = font_regular
+            c_cell.alignment = align_left if isinstance(valor, str) else align_right
+            v_cell.alignment = align_right
+
+    # --- 3. GENERACIÓN DE HOJAS POR CAMIÓN ---
     for camion_val, df_camion in df.groupby(col_camion, sort=True):
         camion_str = limpiar_valor(camion_val)
         ws = wb.create_sheet(title=f"CAMION {camion_str}")
@@ -657,6 +808,13 @@ async def procesar_reporte(file: UploadFile = File(...)):
             if cell.value:
                 max_len = max(max_len, len(str(cell.value)))
         ws_global.column_dimensions[col_letter].width = max(max_len + 4, 15)
+
+    # Ancho y distribución dedicados para CONSOLIDADO POR TURNO
+    ws_turnos.column_dimensions["A"].width = 34
+    ws_turnos.column_dimensions["B"].width = 26
+    ws_turnos.column_dimensions["C"].width = 5
+    ws_turnos.column_dimensions["D"].width = 34
+    ws_turnos.column_dimensions["E"].width = 26
 
     output = io.BytesIO()
     wb.save(output)
